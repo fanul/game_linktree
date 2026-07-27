@@ -1,0 +1,5 @@
+name = "game-linktree"
+main = "src/index.js"
+compatibility_date = "2026-07-27"
+
+# Set GAS_URL as a Worker secret: wrangler secret put GAS_URL
