@@ -4,11 +4,41 @@ import { useRouter } from 'vue-router'
 import { rpc } from '../services/rpc.js'
 
 const router = useRouter()
-const data = ref({ profile: {}, newsHead: [], broadcast: [], links: [], settings: {} })
+
+const defaultItems = [
+  {
+    id: 'item-1',
+    label: 'MONOLITHIC SKY-CITY',
+    subtitle: 'High-tech architectural portal system initialized.',
+    url: 'https://github.com/fanul',
+    icon: '❖',
+    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
+    buttonText: 'EXPLORE ARTIFACT →',
+    showInNewsHead: true,
+    showInDirectory: true,
+    active: true
+  }
+]
+
+const data = ref({
+  profile: {
+    title: 'PALE MEKA FUTURE',
+    bio: 'Precise, airy, and high-tech digital artifacts portal framed within a monolithic sky-city aesthetic.',
+    avatarUrl: '',
+    bgUrl: ''
+  },
+  newsHead: defaultItems,
+  broadcast: [
+    { id: 'b-1', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', active: true }
+  ],
+  links: defaultItems,
+  settings: { newsHeadInterval: 5, maxNewsHead: 5, scrambleDelay: 2, scrambleInterval: 10 }
+})
+
 const error = ref('')
 
 // Text Scramble Animation with Delay & Infinite Loop
-const displayedTitle = ref('')
+const displayedTitle = ref('PALE MEKA FUTURE')
 const chars = '!<>-_\\/[]{}—=+*^?#________'
 let scrambleFrameTimer = null
 let scrambleDelayTimer = null
@@ -152,12 +182,22 @@ function handleKeydown(event) {
 }
 
 onMounted(async () => {
+  startScrambleScheduler()
+  startNewsHeadTimer()
+
   try {
-    data.value = await rpc('getPublicData')
-    startScrambleScheduler()
-    startNewsHeadTimer()
+    const res = await rpc('getPublicData')
+    if (res) {
+      if (res.profile && res.profile.title) data.value.profile = res.profile
+      if (res.newsHead && res.newsHead.length) data.value.newsHead = res.newsHead
+      if (res.broadcast && res.broadcast.length) data.value.broadcast = res.broadcast
+      if (res.links && res.links.length) data.value.links = res.links
+      if (res.settings) data.value.settings = res.settings
+      startScrambleScheduler()
+      startNewsHeadTimer()
+    }
   } catch (e) {
-    error.value = e.message
+    console.warn('RPC load notice:', e)
   }
   window.addEventListener('keydown', handleKeydown)
 })
@@ -200,7 +240,7 @@ onUnmounted(() => {
         <div class="news-head-slider" v-if="data.newsHead && data.newsHead.length">
           <div 
             v-for="(item, idx) in data.newsHead" 
-            :key="item.id"
+            :key="item.id || idx"
             class="news-head-bg"
             :style="{ 
               backgroundImage: `url(${item.imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop'})`,
@@ -223,7 +263,7 @@ onUnmounted(() => {
           <div class="news-head-dots">
             <span 
               v-for="(item, idx) in data.newsHead" 
-              :key="'dot-' + item.id"
+              :key="'dot-' + (item.id || idx)"
               class="news-head-dot"
               :class="{ active: idx === currentNewsHeadIndex }"
               @click="selectNewsHead(idx)"
@@ -237,14 +277,14 @@ onUnmounted(() => {
         <div class="meka-ticker-wrapper">
           <!-- Track 1 -->
           <div class="meka-ticker-track-group">
-            <div v-for="item in data.broadcast" :key="'t1-' + item.id" class="meka-ticker-item">
+            <div v-for="(item, idx) in data.broadcast" :key="'t1-' + (item.id || idx)" class="meka-ticker-item">
               <span class="meka-ticker-tag">BROADCAST</span>
               <span>{{ item.title }} — {{ item.body }}</span>
             </div>
           </div>
           <!-- Track 2 (Seamless Mirror Loop) -->
           <div class="meka-ticker-track-group" aria-hidden="true">
-            <div v-for="item in data.broadcast" :key="'t2-' + item.id" class="meka-ticker-item">
+            <div v-for="(item, idx) in data.broadcast" :key="'t2-' + (item.id || idx)" class="meka-ticker-item">
               <span class="meka-ticker-tag">BROADCAST</span>
               <span>{{ item.title }} — {{ item.body }}</span>
             </div>
