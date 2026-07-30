@@ -45,23 +45,57 @@ function getPublicData() {
   const days = Math.max(1, Number(settings.themeDays) || 3);
   const themeName = themes[Math.floor(Date.now() / 86400000 / days) % themes.length];
   
-  const allItems = data.items || [];
+  let allItems = data.items;
+  if (!Array.isArray(allItems) || !allItems.length) {
+    allItems = [];
+    (data.newsHead || []).forEach(function (x) {
+      allItems.push({
+        id: x.id || ('nh-' + Math.random()),
+        label: x.title || x.label || 'News Head',
+        subtitle: x.subtitle || '',
+        url: x.linkUrl || x.url || 'https://',
+        icon: '❖',
+        imageUrl: x.imageUrl || '',
+        buttonText: x.buttonText || 'EXPLORE ARTIFACT →',
+        showInNewsHead: true,
+        showInDirectory: false,
+        active: x.active !== false
+      });
+    });
+    (data.links || []).forEach(function (x) {
+      allItems.push({
+        id: x.id || ('link-' + Math.random()),
+        label: x.label || x.title || 'Link',
+        subtitle: '',
+        url: x.url || x.linkUrl || 'https://',
+        icon: x.icon || '❖',
+        imageUrl: x.imageUrl || '',
+        buttonText: 'EXPLORE →',
+        showInNewsHead: false,
+        showInDirectory: true,
+        active: x.active !== false
+      });
+    });
+    if (!allItems.length) {
+      allItems = defaultData_().items;
+    }
+  }
   
   const activeNewsHead = allItems
-    .filter(function (x) { return x.showInNewsHead === true && x.active !== false; })
+    .filter(function (x) { return (x.showInNewsHead === true || x.showInNewsHead === undefined) && x.active !== false; })
     .slice(0, Math.max(1, Number(settings.maxNewsHead) || 5));
 
   const activeLinks = allItems
-    .filter(function (x) { return x.showInDirectory !== false && x.active !== false; });
+    .filter(function (x) { return (x.showInDirectory === true || x.showInDirectory === undefined) && x.active !== false; });
 
-  const activeBroadcast = (data.broadcast || data.news || [])
+  const activeBroadcast = (data.broadcast || data.news || defaultData_().broadcast)
     .filter(function (x) { return x.active !== false; });
 
   return {
     profile: data.profile || defaultData_().profile,
-    newsHead: activeNewsHead,
-    broadcast: activeBroadcast,
-    links: activeLinks,
+    newsHead: activeNewsHead.length ? activeNewsHead : defaultData_().items,
+    broadcast: activeBroadcast.length ? activeBroadcast : defaultData_().broadcast,
+    links: activeLinks.length ? activeLinks : defaultData_().items,
     settings: settings,
     theme: theme_(themeName)
   };
@@ -261,8 +295,12 @@ function validateData_(input) {
 }
 
 function readData_() {
-  const raw = scriptProperties_().getProperty('APP_DATA');
-  return raw ? JSON.parse(raw) : defaultData_();
+  try {
+    const raw = scriptProperties_().getProperty('APP_DATA');
+    return raw ? JSON.parse(raw) : defaultData_();
+  } catch (e) {
+    return defaultData_();
+  }
 }
 
 function defaultData_() {
