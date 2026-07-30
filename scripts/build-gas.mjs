@@ -6,6 +6,6 @@ const jsPath = html.match(/<script[^>]+src="\.\/(assets\/[^"]+)"/)[1]
 const cssPath = html.match(/<link[^>]+href="\.\/(assets\/[^"]+\.css)"/)[1]
 const js = fs.readFileSync(path.join('dist', jsPath), 'utf8').replaceAll('</script>', '<\\/script>')
 const css = fs.readFileSync(path.join('dist', cssPath), 'utf8')
-const output = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Game Linktree</title><style>${css}</style></head><body><div id="app"></div><script type="module">${js}</script></body></html>`
+const output = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Game Linktree</title><style>${css}</style></head><body><div id="app"></div><script>${js}</script></body></html>`
 fs.writeFileSync('gas/index.html', output)
 console.log(`gas/index.html ${output.length} bytes`)
