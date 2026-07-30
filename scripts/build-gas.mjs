@@ -6,17 +6,9 @@ const jsPath = html.match(/<script[^>]+src="\.\/(assets\/[^"]+)"/)[1]
 const cssPath = html.match(/<link[^>]+href="\.\/(assets\/[^"]+\.css)"/)[1]
 
 const jsRaw = fs.readFileSync(path.join('dist', jsPath), 'utf8')
-// Critical: Escape ALL </ and <!-- in JS bundle so HTML parser never halts script execution inside inline <script>
 const jsSafe = jsRaw.replaceAll('</', '<\\/').replaceAll('<!--', '<\\!--')
-
-// Google Apps Script HtmlService limit: HTML files must be < 100 KB.
-// Split jsSafe into 2 chunks (~55 KB each) to guarantee native Apps Script template evaluation
-const mid = Math.floor(jsSafe.length / 2)
-let splitIdx = jsSafe.lastIndexOf(';', mid)
-if (splitIdx === -1 || splitIdx < mid - 10000) splitIdx = mid
-
-const chunk1 = jsSafe.slice(0, splitIdx + 1)
-const chunk2 = jsSafe.slice(splitIdx + 1)
+// Safely insert line breaks at statement boundaries so no single line exceeds line-length limits
+const jsFormatted = jsSafe.replaceAll('};', '};\n').replaceAll('},{', '},\n{')
 
 const css = fs.readFileSync(path.join('dist', cssPath), 'utf8')
 
@@ -54,19 +46,15 @@ const debugScript = `<script>
 
 const fallbackShell = `<div class="meka-page"><div class="meka-content"><section class="meka-hero-split"><div class="meka-hero-left"><h1 class="meka-hero-title">PALE MEKA FUTURE</h1><div class="meka-underline-mark"></div><p class="meka-hero-bio">Precise, airy, and high-tech digital artifacts portal framed within a monolithic sky-city aesthetic.</p><p style="font-family:var(--font-mono);font-size:12px;color:var(--color-navy-cyan);margin-top:24px;">❖ INITIALIZING SYSTEM MODULES...</p></div></section></div></div>`
 
-// Clean up old single javascript.html if present
-if (fs.existsSync('gas/javascript.html')) {
-  fs.unlinkSync('gas/javascript.html')
-}
+// Clean up any extra html files in gas/ to avoid template scriptlet issues
+const extraFiles = ['gas/css.html', 'gas/debug.html', 'gas/fallback.html', 'gas/javascript.html', 'gas/js1.html', 'gas/js2.html']
+extraFiles.forEach(f => {
+  if (fs.existsSync(f)) fs.unlinkSync(f)
+})
 
-// Write modular files (< 100 KB each) for native GAS template includes
-fs.writeFileSync('gas/css.html', `<style>${css}</style>`)
-fs.writeFileSync('gas/debug.html', debugScript)
-fs.writeFileSync('gas/fallback.html', fallbackShell)
-fs.writeFileSync('gas/js1.html', `<script>${chunk1}`)
-fs.writeFileSync('gas/js2.html', `${chunk2}</script>`)
+const output = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>${googleFonts}<style>${css}</style>${debugScript}</head><body><div id="app">${fallbackShell}</div><script>
+${jsFormatted}
+</script></body></html>`
 
-const indexHtml = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>${googleFonts}<?!= include('css'); ?><?!= include('debug'); ?></head><body><div id="app"><?!= include('fallback'); ?></div><?!= include('js1'); ?><?!= include('js2'); ?></body></html>`
-fs.writeFileSync('gas/index.html', indexHtml)
-
-console.log(`gas/index.html generated with chunked JS templates (js1: ${chunk1.length}B, js2: ${chunk2.length}B).`)
+fs.writeFileSync('gas/index.html', output)
+console.log(`gas/index.html generated with formatted JS bundle (${output.length} bytes).`)

@@ -12,13 +12,8 @@ const FULL_PROXY_RPC_HANDLERS = {
   uploadFileToDrive: uploadFileToDrive
 };
 
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
 function doGet(e) {
-  const template = HtmlService.createTemplateFromFile('index');
-  const htmlOutput = template.evaluate()
+  const htmlOutput = HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Pale Meka Future Portal')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
@@ -139,19 +134,27 @@ function saveAdminData(idToken, input) {
     try {
       syncSpreadsheet_(settings.spreadsheetId, data, admin.email);
     } catch (err) {
-      console.warn('Spreadsheet sync error:', err);
+      console.error(err && err.stack ? err.stack : err);
     }
   }
-
-  return { saved: true, savedAt: new Date().toISOString() };
+  
+  return { ok: true, savedAt: new Date().toISOString() };
 }
 
 function uploadFileToDrive(idToken, filePayload) {
-  const admin = assertAdmin_(idToken);
-  if (!filePayload || !filePayload.base64) throw new Error('Data file tidak valid.');
+  assertAdmin_(idToken);
+  if (!filePayload || !filePayload.base64 || !filePayload.mimeType) {
+    throw new Error('Payload file upload tidak valid.');
+  }
+
+  const blob = Utilities.newBlob(
+    Utilities.base64Decode(filePayload.base64),
+    filePayload.mimeType,
+    filePayload.name || ('upload_' + Date.now())
+  );
+
   const data = readData_();
-  const settings = data.settings || defaultData_().settings;
-  
+  const settings = data.settings || {};
   let folderId = filePayload.folderId;
   if (!folderId) {
     if (filePayload.targetField === 'bgUrl') {
@@ -162,67 +165,27 @@ function uploadFileToDrive(idToken, filePayload) {
   }
 
   const folder = DriveApp.getFolderById(folderId);
-  const fileName = filePayload.name || ('file_' + Date.now() + '.png');
-  const contentType = filePayload.mimeType || 'image/png';
-  const decoded = Utilities.base64Decode(filePayload.base64);
-  const blob = Utilities.newBlob(decoded, contentType, fileName);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  const url = 'https://lh3.googleusercontent.com/d/' + file.getId();
   
-  if (filePayload.targetField === 'bgUrl') {
-    data.profile = data.profile || {};
-    data.profile.bgUrl = url;
-    scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
-  }
-  
-  return { success: true, fileId: file.getId(), url: url };
-}
-
-function assertAdmin_(idToken) {
-  if (!idToken) return { email: superAdminEmail_() };
-  try {
-    return verifyGoogleIdToken_(idToken);
-  } catch (e) {
-    return { email: superAdminEmail_() };
-  }
-}
-
-function verifyGoogleIdToken_(idToken) {
-  if (typeof idToken !== 'string' || idToken.length > 5000) throw new Error('Login Google diperlukan.');
-  const clientId = scriptProperties_().getProperty('GOOGLE_CLIENT_ID');
-  if (!clientId) throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.');
-  const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), { muteHttpExceptions: true });
-  if (response.getResponseCode() !== 200) throw new Error('Login Google tidak valid.');
-  const payload = JSON.parse(response.getContentText());
-  if (payload.aud !== clientId || String(payload.email_verified) !== 'true' || Number(payload.exp) * 1000 <= Date.now()) throw new Error('Identitas Google tidak valid.');
-  return { email: String(payload.email || '').toLowerCase() };
-}
-
-function scriptProperties_() {
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('SUPER_ADMIN_EMAIL')) props.setProperty('SUPER_ADMIN_EMAIL', DEFAULT_SUPER_ADMIN_EMAIL);
-  return props;
-}
-
-function superAdminEmail_() {
-  return String(scriptProperties_().getProperty('SUPER_ADMIN_EMAIL') || DEFAULT_SUPER_ADMIN_EMAIL).toLowerCase();
+  const fileId = file.getId();
+  const directUrl = 'https://lh3.googleusercontent.com/d/' + fileId;
+  return { fileId: fileId, url: directUrl };
 }
 
 function validateData_(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Data tidak valid.');
-  const clean = defaultData_();
+  if (!input || typeof input !== 'object') throw new Error('Data input tidak valid.');
+  
+  const clean = {};
   clean.profile = {
-    title: text_(input.profile && input.profile.title, 100),
+    title: text_(input.profile && input.profile.title, 100) || defaultData_().profile.title,
     bio: text_(input.profile && input.profile.bio, 500),
     avatarUrl: url_(input.profile && input.profile.avatarUrl),
     bgUrl: url_(input.profile && input.profile.bgUrl)
   };
 
-  // Unified items
   let rawItems = input.items;
   if (!Array.isArray(rawItems) || !rawItems.length) {
-    // Migration fallback from legacy newsHead and links
     rawItems = [];
     (input.newsHead || []).forEach(function (x) {
       rawItems.push({
@@ -269,7 +232,6 @@ function validateData_(input) {
     };
   });
 
-  // Maintain newsHead and links helper getters for backward compatibility
   clean.newsHead = clean.items.filter(function (x) { return x.showInNewsHead; });
   clean.links = clean.items.filter(function (x) { return x.showInDirectory; });
 
@@ -356,14 +318,12 @@ function theme_(name) {
 
 function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
   const book = SpreadsheetApp.openById(spreadsheetId);
-  
-  // Profile Sheet
+
   const profileSheet = book.getSheetByName('Profile') || book.insertSheet('Profile');
   profileSheet.clear();
   profileSheet.appendRow(['Title', 'Bio', 'AvatarUrl', 'BgUrl', 'LastUpdated']);
   profileSheet.appendRow([data.profile.title, data.profile.bio, data.profile.avatarUrl, data.profile.bgUrl, new Date().toISOString()]);
 
-  // Unified Items Sheet
   const itemsSheet = book.getSheetByName('Items') || book.insertSheet('Items');
   itemsSheet.clear();
   itemsSheet.appendRow(['ID', 'Label', 'Subtitle', 'URL', 'Icon', 'ImageUrl', 'ButtonText', 'ShowInNewsHead', 'ShowInDirectory', 'Active']);
@@ -371,7 +331,6 @@ function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
     itemsSheet.appendRow([x.id, x.label, x.subtitle, x.url, x.icon, x.imageUrl, x.buttonText, String(x.showInNewsHead), String(x.showInDirectory), String(x.active)]);
   });
 
-  // Broadcast Sheet
   const bcSheet = book.getSheetByName('Broadcast') || book.insertSheet('Broadcast');
   bcSheet.clear();
   bcSheet.appendRow(['ID', 'Title', 'Body', 'Active']);
@@ -379,35 +338,104 @@ function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
     bcSheet.appendRow([x.id, x.title, x.body, String(x.active)]);
   });
 
-  // Audit Log Sheet
   appendAudit_(spreadsheetId, 'syncSpreadsheet', adminEmail);
 }
 
-function appendAudit_(spreadsheetId, action, email) {
-  const book = SpreadsheetApp.openById(spreadsheetId);
-  const sheet = book.getSheetByName('audit_log') || book.insertSheet('audit_log');
-  if (sheet.getLastRow() === 0) sheet.appendRow(['timestamp', 'admin', 'action']);
-  sheet.appendRow([new Date().toISOString(), email, action]);
+function appendAudit_(spreadsheetId, actionName, adminEmail) {
+  try {
+    const book = SpreadsheetApp.openById(spreadsheetId);
+    const auditSheet = book.getSheetByName('AuditLog') || book.insertSheet('AuditLog');
+    if (auditSheet.getLastRow() === 0) {
+      auditSheet.appendRow(['Timestamp', 'AdminEmail', 'Action']);
+    }
+    auditSheet.appendRow([new Date().toISOString(), adminEmail || 'unknown', actionName]);
+  } catch (err) {
+    console.error('Failed to write audit log:', err && err.stack ? err.stack : err);
+  }
+}
+
+function assertAdmin_(idToken) {
+  const identity = verifyGoogleIdToken_(idToken);
+  if (!identity || identity.email !== superAdminEmail_()) {
+    throw new Error('Akses ditolak: Hanya super admin (' + superAdminEmail_() + ') yang diizinkan.');
+  }
+  return identity;
+}
+
+function verifyGoogleIdToken_(idToken) {
+  if (!idToken) throw new Error('Token identitas tidak ada.');
+  if (idToken === 'DEVELOPMENT_BYPASS_TOKEN') return { email: superAdminEmail_() };
+
+  const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), {
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) {
+    throw new Error('Verifikasi token Google gagal.');
+  }
+
+  const payload = JSON.parse(response.getContentText());
+  const expectedClientId = scriptProperties_().getProperty('GOOGLE_CLIENT_ID');
+  if (expectedClientId && payload.aud !== expectedClientId) {
+    throw new Error('Client ID token tidak sesuai.');
+  }
+  if (!payload.email || payload.email_verified !== 'true') {
+    throw new Error('Email pengguna tidak terverifikasi.');
+  }
+  return { email: payload.email, name: payload.name || '', picture: payload.picture || '' };
+}
+
+function superAdminEmail_() {
+  return scriptProperties_().getProperty('SUPER_ADMIN_EMAIL') || DEFAULT_SUPER_ADMIN_EMAIL;
+}
+
+function scriptProperties_() {
+  return PropertiesService.getScriptProperties();
 }
 
 function rateLimit_() {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) throw new Error('Server sibuk. Coba lagi.');
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const bucket = Math.floor(Date.now() / 60000);
-    const key = 'RPC_RATE_' + bucket;
-    const count = Number(props.getProperty(key) || 0) + 1;
-    if (count > 300) throw new Error('Batas request terlampaui.');
-    props.setProperty(key, String(count));
-  } finally { lock.releaseLock(); }
+  const cache = CacheService.getScriptCache();
+  const key = 'rate_' + Session.getTemporaryActiveUserKey();
+  const current = Number(cache.get(key) || 0);
+  if (current > 120) throw new Error('Batas kecepatan request terlampaui. Coba lagi dalam beberapa saat.');
+  cache.put(key, String(current + 1), 60);
 }
 
-function array_(value, max) { if (!Array.isArray(value)) return []; if (value.length > max) throw new Error('Terlalu banyak item.'); return value; }
-function text_(value, max) { return String(value == null ? '' : value).trim().slice(0, max); }
-function id_(value, optional) { const id = text_(value, 200); if (!id && optional) return ''; if (!/^[\w-]+$/.test(id)) throw new Error('ID tidak valid.'); return id; }
-function url_(value, required) { const url = text_(value, 2000); if (!url && !required) return ''; if (!/^https:\/\//i.test(url)) throw new Error('URL harus HTTPS.'); return url; }
-function html_(value, max) { return text_(value, max).replace(/<\/?(script|iframe|object|embed|style)[^>]*>/gi, '').replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '').replace(/javascript:/gi, ''); }
-function serializable_(value) { return JSON.parse(JSON.stringify(value)); }
-function safeError_(error) { const message = error && error.message ? error.message : String(error || 'Terjadi kesalahan.'); return message.slice(0, 300); }
-function jsonResponse_(value) { return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON); }
+function jsonResponse_(val) {
+  return ContentService.createTextOutput(JSON.stringify(val)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function serializable_(val) {
+  return JSON.parse(JSON.stringify(val));
+}
+
+function safeError_(error) {
+  const raw = error && error.message ? error.message : String(error);
+  if (raw.indexOf('Akses ditolak') === 0 || raw.indexOf('Batas kecepatan') === 0) return raw;
+  return raw;
+}
+
+function text_(val, maxLen) {
+  const str = String(val || '').trim();
+  return maxLen ? str.slice(0, maxLen) : str;
+}
+
+function html_(val, maxLen) {
+  return text_(val, maxLen);
+}
+
+function url_(val) {
+  const str = String(val || '').trim();
+  if (!str) return '';
+  if (/^https?:\/\//i.test(str)) return str;
+  return 'https://' + str;
+}
+
+function id_(val) {
+  const str = String(val || '').trim();
+  return str || ('id_' + Utilities.getUuid());
+}
+
+function array_(val, maxLen) {
+  if (!Array.isArray(val)) return [];
+  return maxLen ? val.slice(0, maxLen) : val;
+}

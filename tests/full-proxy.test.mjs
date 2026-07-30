@@ -18,7 +18,8 @@ function loadGas(source = gas) {
     },
     Utilities: { getUuid: () => 'uuid' },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty() {} }) },
-    Session: { getActiveUser: () => ({ getEmail: () => 'fanul.doang@gmail.com' }) },
+    CacheService: { getScriptCache: () => ({ get: () => null, put() {} }) },
+    Session: { getActiveUser: () => ({ getEmail: () => 'fanul.doang@gmail.com' }), getTemporaryActiveUserKey: () => 'key' },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     DriveApp: {}, SpreadsheetApp: {}, XmlService: {}, MimeType: { XML: 'xml' }, console
   }
