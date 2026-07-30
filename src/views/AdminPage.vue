@@ -1,17 +1,14 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { adminArgs, fileToBase64, rpc } from '../services/rpc.js'
 
 const state = reactive({
   profile: { title: '', bio: '', avatarUrl: '', bgUrl: '' },
-  newsHead: [],
+  items: [],
   broadcast: [],
-  links: [],
   settings: {
     driveFolderId: '1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR',
     newsHeadFolderId: '1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs',
-    directoryFolderId: '1h4xQ-uxN7f7rZJKJiq0yH_Xjz4WOfctR',
-    spreadsheetId: '',
     newsHeadInterval: 5,
     maxNewsHead: 5,
     themeDays: 3,
@@ -22,11 +19,56 @@ const state = reactive({
 const status = ref('Memuat data...')
 const isUploading = ref(false)
 
+// Search, Filter & Pagination
+const searchQuery = ref('')
+const activeFilter = ref('ALL') // ALL, NEWS_HEAD, DIRECTORY, ACTIVE, INACTIVE
+const currentPage = ref(1)
+const pageSize = 6
+
+const filteredItems = computed(() => {
+  let list = state.items || []
+  
+  if (activeFilter.value === 'NEWS_HEAD') {
+    list = list.filter(x => x.showInNewsHead)
+  } else if (activeFilter.value === 'DIRECTORY') {
+    list = list.filter(x => x.showInDirectory)
+  } else if (activeFilter.value === 'ACTIVE') {
+    list = list.filter(x => x.active)
+  } else if (activeFilter.value === 'INACTIVE') {
+    list = list.filter(x => !x.active)
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(x => 
+      (x.label || '').toLowerCase().includes(q) ||
+      (x.subtitle || '').toLowerCase().includes(q) ||
+      (x.url || '').toLowerCase().includes(q)
+    )
+  }
+
+  return list
+})
+
+const totalPages = computed(() => Math.ceil(filteredItems.value.length / pageSize) || 1)
+
+const paginatedItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredItems.value.slice(start, start + pageSize)
+})
+
 async function load() {
   try {
     const data = await rpc('getAdminData', ...adminArgs())
     Object.assign(state, data)
     if (!state.broadcast) state.broadcast = data.news || []
+    if (!state.items || !state.items.length) {
+      // Migrate legacy if needed
+      const migrated = []
+      ;(data.newsHead || []).forEach(x => migrated.push({ ...x, label: x.title, url: x.linkUrl, showInNewsHead: true, showInDirectory: false, active: x.active !== false }))
+      ;(data.links || []).forEach(x => migrated.push({ ...x, showInNewsHead: false, showInDirectory: true, active: x.active !== false }))
+      state.items = migrated
+    }
     status.value = 'Data terhubung dengan server & Spreadsheet DB.'
   } catch (e) {
     status.value = 'Error: ' + e.message
@@ -43,7 +85,7 @@ async function save() {
   }
 }
 
-async function handleFileUpload(event, item, fieldName, targetType, folderId) {
+async function handleFileUpload(event, item, fieldName, folderId) {
   const file = event.target.files?.[0]
   if (!file) return
   try {
@@ -54,9 +96,8 @@ async function handleFileUpload(event, item, fieldName, targetType, folderId) {
       name: file.name,
       mimeType: file.type,
       base64,
-      targetType,
       targetField: fieldName,
-      folderId
+      folderId: folderId || state.settings.newsHeadFolderId || '1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs'
     }))
     if (result && result.url) {
       if (item) {
@@ -73,16 +114,24 @@ async function handleFileUpload(event, item, fieldName, targetType, folderId) {
   }
 }
 
-function addNewsHead() {
-  state.newsHead.push({
+function addItem() {
+  state.items.unshift({
     id: crypto.randomUUID(),
-    title: 'News Head Baru',
-    subtitle: 'Deskripsi singkat news head...',
+    label: 'Item Baru',
+    subtitle: 'Deskripsi item...',
+    url: 'https://',
+    icon: '❖',
     imageUrl: '',
-    linkUrl: 'https://',
     buttonText: 'EXPLORE ARTIFACT →',
+    showInNewsHead: true,
+    showInDirectory: true,
     active: true
   })
+}
+
+function deleteItem(item) {
+  const idx = state.items.findIndex(x => x.id === item.id)
+  if (idx !== -1) state.items.splice(idx, 1)
 }
 
 function addBroadcast() {
@@ -90,17 +139,6 @@ function addBroadcast() {
     id: crypto.randomUUID(),
     title: 'Pesan Broadcast',
     body: 'Tulis isi pengumuman...',
-    imageUrl: '',
-    active: true
-  })
-}
-
-function addLink() {
-  state.links.push({
-    id: crypto.randomUUID(),
-    label: 'Link baru',
-    url: 'https://',
-    icon: '❖',
     imageUrl: '',
     active: true
   })
@@ -139,81 +177,112 @@ onMounted(() => {
             </div>
             <div class="admin-field">
               <label>Bio / Deskripsi</label>
-              <textarea v-model="state.profile.bio" class="admin-textarea" rows="3" placeholder="Deskripsi portal"></textarea>
+              <textarea v-model="state.profile.bio" class="admin-textarea" rows="2" placeholder="Deskripsi portal"></textarea>
             </div>
             <div class="admin-field">
               <label>Background Image URL</label>
               <div class="admin-inline-input">
                 <input v-model="state.profile.bgUrl" class="admin-input" style="flex: 1;" placeholder="https://lh3.googleusercontent.com/d/...">
                 <label class="upload-icon-btn">
-                  <span>📁 UPLOAD</span>
-                  <input type="file" accept="image/*" style="display: none;" @change="handleFileUpload($event, null, 'bgUrl', 'bg', state.settings.driveFolderId)" :disabled="isUploading">
+                  <span>📁 UPLOAD BG</span>
+                  <input type="file" accept="image/*" style="display: none;" @change="handleFileUpload($event, null, 'bgUrl', state.settings.driveFolderId)" :disabled="isUploading">
                 </label>
               </div>
             </div>
           </section>
 
-          <!-- Storage & Google Spreadsheet Database Settings -->
+          <!-- Storage Settings & News Head Config -->
           <section class="admin-card">
-            <h2 class="meka-eyebrow" style="font-size: 12px; margin-bottom: 16px;">02 // GOOGLE DRIVE & SPREADSHEET DB</h2>
+            <h2 class="meka-eyebrow" style="font-size: 12px; margin-bottom: 16px;">02 // CONFIG & DRIVE STORAGE</h2>
             <div class="admin-field">
-              <label>Google Spreadsheet ID (Database Sync)</label>
-              <input v-model="state.settings.spreadsheetId" class="admin-input" placeholder="Spreadsheet ID untuk sync database">
-            </div>
-            <div class="admin-field">
-              <label>Folder ID Background</label>
-              <input v-model="state.settings.driveFolderId" class="admin-input" placeholder="1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR">
-            </div>
-            <div class="admin-field">
-              <label>Folder ID News Head</label>
+              <label>Folder ID Gambar (News Head & Directory): 1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs</label>
               <input v-model="state.settings.newsHeadFolderId" class="admin-input" placeholder="1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs">
             </div>
             <div class="admin-field">
-              <label>Folder ID Directory</label>
-              <input v-model="state.settings.directoryFolderId" class="admin-input" placeholder="1h4xQ-uxN7f7rZJKJiq0yH_Xjz4WOfctR">
+              <label>Folder ID Background: 1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR</label>
+              <input v-model="state.settings.driveFolderId" class="admin-input" placeholder="1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR">
+            </div>
+            <div style="display: flex; gap: 16px; margin-top: 8px;">
+              <div class="admin-field" style="flex: 1;">
+                <label>Rolling Slider (detik)</label>
+                <input v-model.number="state.settings.newsHeadInterval" type="number" min="1" max="60" class="admin-input" style="text-align: center;">
+              </div>
+              <div class="admin-field" style="flex: 1;">
+                <label>Max Slider News Head</label>
+                <input v-model.number="state.settings.maxNewsHead" type="number" min="1" max="20" class="admin-input" style="text-align: center;">
+              </div>
             </div>
           </section>
 
-          <!-- News Head Slider Manager -->
+          <!-- Unified Items Manager (News Head + Directory) with Search, Filter & Pagination -->
           <section class="admin-card admin-grid-full">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
               <div>
-                <h2 class="meka-eyebrow" style="font-size: 12px; margin: 0;">03 // NEWS HEAD SLIDER</h2>
+                <h2 class="meka-eyebrow" style="font-size: 12px; margin: 0;">03 // UNIFIED ITEM MANAGER (NEWS HEAD & DIRECTORY)</h2>
+                <small style="font-family: var(--font-mono); font-size: 10px; color: var(--color-medium-blue-gray);">
+                  Gunakan centang untuk menampilkan di News Head slider atau Directory carousel. Total: {{ state.items.length }} item
+                </small>
               </div>
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <label style="font-family: var(--font-mono); font-size: 11px; display: flex; align-items: center; gap: 6px; color: var(--color-navy-cyan);">
-                  Rolling (detik):
-                  <input v-model.number="state.settings.newsHeadInterval" type="number" min="1" max="60" class="admin-input" style="width: 55px; padding: 4px 8px; text-align: center;">
-                </label>
-                <label style="font-family: var(--font-mono); font-size: 11px; display: flex; align-items: center; gap: 6px; color: var(--color-navy-cyan);">
-                  Max Tampil:
-                  <input v-model.number="state.settings.maxNewsHead" type="number" min="1" max="20" class="admin-input" style="width: 55px; padding: 4px 8px; text-align: center;">
-                </label>
-                <button class="btn-cyan" @click="addNewsHead">+ TAMBAH NEWS HEAD</button>
+              <button class="btn-cyan" @click="addItem">+ TAMBAH ITEM BARU</button>
+            </div>
+
+            <!-- Toolbar: Search & Filter Tabs -->
+            <div class="admin-toolbar">
+              <div style="flex: 1; max-width: 320px;">
+                <input v-model="searchQuery" class="admin-input" style="padding: 6px 12px; font-size: 12px;" placeholder="🔍 Cari item label/url...">
+              </div>
+
+              <div class="admin-filter-group">
+                <button class="admin-filter-btn" :class="{ active: activeFilter === 'ALL' }" @click="activeFilter = 'ALL'; currentPage = 1">SEMUA ({{ state.items.length }})</button>
+                <button class="admin-filter-btn" :class="{ active: activeFilter === 'NEWS_HEAD' }" @click="activeFilter = 'NEWS_HEAD'; currentPage = 1">NEWS HEAD</button>
+                <button class="admin-filter-btn" :class="{ active: activeFilter === 'DIRECTORY' }" @click="activeFilter = 'DIRECTORY'; currentPage = 1">DIRECTORY</button>
+                <button class="admin-filter-btn" :class="{ active: activeFilter === 'ACTIVE' }" @click="activeFilter = 'ACTIVE'; currentPage = 1">AKTIF</button>
+                <button class="admin-filter-btn" :class="{ active: activeFilter === 'INACTIVE' }" @click="activeFilter = 'INACTIVE'; currentPage = 1">NON-AKTIF</button>
+              </div>
+
+              <div class="admin-pagination">
+                <button class="admin-filter-btn" :disabled="currentPage <= 1" @click="currentPage--">← PREV</button>
+                <span>{{ currentPage }} / {{ totalPages }}</span>
+                <button class="admin-filter-btn" :disabled="currentPage >= totalPages" @click="currentPage++">NEXT →</button>
               </div>
             </div>
 
-            <div v-for="(nh, i) in state.newsHead" :key="nh.id" style="padding: 14px 0; border-top: 1px solid var(--color-soft-gray-border); display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: center;">
-                <input v-model="nh.title" class="admin-input" placeholder="Judul News Head">
-                <input v-model="nh.subtitle" class="admin-input" placeholder="Deskripsi / Subtitle">
-                <input v-model="nh.linkUrl" class="admin-input" placeholder="Link URL Target">
-                <input v-model="nh.buttonText" class="admin-input" placeholder="Teks Tombol (e.g. EXPLORE →)">
-                <button class="btn-danger" @click="state.newsHead.splice(i, 1)">HAPUS</button>
+            <!-- Item Row List -->
+            <div v-for="item in paginatedItems" :key="item.id" style="padding: 16px 0; border-top: 1px solid var(--color-soft-gray-border); display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: grid; grid-template-columns: 50px 1.5fr 2fr 1.5fr 1.2fr auto; gap: 10px; align-items: center;">
+                <input v-model="item.icon" class="admin-input" style="text-align: center;" placeholder="Icon">
+                <input v-model="item.label" class="admin-input" placeholder="Label / Judul">
+                <input v-model="item.subtitle" class="admin-input" placeholder="Subtitle / Deskripsi Singkat">
+                <input v-model="item.url" class="admin-input" placeholder="https://...">
+                <input v-model="item.buttonText" class="admin-input" placeholder="Teks Tombol Slider">
+                <button class="btn-danger" @click="deleteItem(item)">HAPUS</button>
               </div>
 
-              <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
                 <div class="admin-inline-input" style="flex: 1;">
-                  <input v-model="nh.imageUrl" class="admin-input" style="flex: 1; font-size: 12px;" placeholder="URL Gambar Slide">
+                  <input v-model="item.imageUrl" class="admin-input" style="flex: 1; font-size: 11px;" placeholder="URL Gambar (Drive Folder: 1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs)">
                   <label class="upload-icon-btn">
-                    <span>📁 UPLOAD GAMBAR SLIDE</span>
-                    <input type="file" accept="image/*" style="display: none;" @change="handleFileUpload($event, nh, 'imageUrl', 'newsHead', state.settings.newsHeadFolderId)" :disabled="isUploading">
+                    <span>📁 UPLOAD GAMBAR</span>
+                    <input type="file" accept="image/*" style="display: none;" @change="handleFileUpload($event, item, 'imageUrl', state.settings.newsHeadFolderId)" :disabled="isUploading">
                   </label>
                 </div>
-                <label style="font-family: var(--font-mono); font-size: 11px; color: var(--color-navy-cyan); white-space: nowrap;">
-                  <input v-model="nh.active" type="checkbox"> Aktif
-                </label>
+
+                <div style="display: flex; align-items: center; gap: 14px; font-family: var(--font-mono); font-size: 11px; color: var(--color-navy-cyan);">
+                  <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input v-model="item.showInNewsHead" type="checkbox"> Tampil di News Head
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input v-model="item.showInDirectory" type="checkbox"> Tampil di Directory
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input v-model="item.active" type="checkbox"> Aktif
+                  </label>
+                </div>
               </div>
+            </div>
+
+            <div v-if="!filteredItems.length" style="padding: 24px 0; text-align: center; font-family: var(--font-mono); font-size: 12px; color: var(--color-medium-blue-gray);">
+              Tidak ada item yang sesuai dengan pencarian / filter.
             </div>
           </section>
 
@@ -230,38 +299,6 @@ onMounted(() => {
                 <input v-model="b.active" type="checkbox"> Aktif
               </label>
               <button class="btn-danger" @click="state.broadcast.splice(i, 1)">HAPUS</button>
-            </div>
-          </section>
-
-          <!-- Directory Links Editor -->
-          <section class="admin-card admin-grid-full">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-              <div>
-                <h2 class="meka-eyebrow" style="font-size: 12px; margin: 0;">05 // DIRECTORY LINKS</h2>
-              </div>
-              <button class="btn-cyan" @click="addLink">+ TAMBAH DIRECTORY LINK</button>
-            </div>
-
-            <div v-for="(l, i) in state.links" :key="l.id" style="padding: 14px 0; border-top: 1px solid var(--color-soft-gray-border); display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: grid; grid-template-columns: 60px 1.5fr 2fr auto; gap: 10px; align-items: center;">
-                <input v-model="l.icon" class="admin-input" style="text-align: center;" placeholder="Icon">
-                <input v-model="l.label" class="admin-input" placeholder="Nama Label Direktori">
-                <input v-model="l.url" class="admin-input" placeholder="https://...">
-                <button class="btn-danger" @click="state.links.splice(i, 1)">HAPUS</button>
-              </div>
-
-              <div style="display: flex; align-items: center; gap: 12px;">
-                <div class="admin-inline-input" style="flex: 1;">
-                  <input v-model="l.imageUrl" class="admin-input" style="flex: 1; font-size: 12px;" placeholder="URL Gambar Directory Showcase">
-                  <label class="upload-icon-btn">
-                    <span>📁 UPLOAD GAMBAR SHOWCASE</span>
-                    <input type="file" accept="image/*" style="display: none;" @change="handleFileUpload($event, l, 'imageUrl', 'directory', state.settings.directoryFolderId)" :disabled="isUploading">
-                  </label>
-                </div>
-                <label style="font-family: var(--font-mono); font-size: 11px; color: var(--color-navy-cyan); white-space: nowrap;">
-                  <input v-model="l.active" type="checkbox"> Aktif
-                </label>
-              </div>
             </div>
           </section>
         </div>

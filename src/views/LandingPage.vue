@@ -1,19 +1,54 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { rpc } from '../services/rpc.js'
 
 const data = ref({ profile: {}, newsHead: [], broadcast: [], links: [], settings: {} })
 const error = ref('')
 
+// Text Scramble Animation
+const displayedTitle = ref('')
+const chars = '!<>-_\\/[]{}—=+*^?#________'
+let scrambleTimer = null
+
+function runTextScramble(newTitle) {
+  if (!newTitle) return
+  if (scrambleTimer) clearInterval(scrambleTimer)
+  
+  const target = newTitle.toUpperCase()
+  let frame = 0
+  const maxFrames = target.length * 3
+  
+  scrambleTimer = setInterval(() => {
+    let output = ''
+    let complete = 0
+    
+    for (let i = 0; i < target.length; i++) {
+      if (target[i] === ' ') {
+        output += ' '
+        complete++
+      } else if (frame >= (i + 1) * 3) {
+        output += target[i]
+        complete++
+      } else {
+        const randomChar = chars[Math.floor(Math.random() * chars.length)]
+        output += `<span class="scramble-char">${randomChar}</span>`
+      }
+    }
+    
+    displayedTitle.value = output
+    frame++
+    
+    if (complete === target.length || frame > maxFrames + 10) {
+      displayedTitle.value = target
+      clearInterval(scrambleTimer)
+      scrambleTimer = null
+    }
+  }, 35)
+}
+
+// News Head Slider Timer
 const currentNewsHeadIndex = ref(0)
 let newsHeadTimer = null
-
-const activeDirectoryIndex = ref(0)
-
-function scrollToSection(id) {
-  const el = document.getElementById(id)
-  if (el) el.scrollIntoView({ behavior: 'smooth' })
-}
 
 function startNewsHeadTimer() {
   stopNewsHeadTimer()
@@ -35,6 +70,14 @@ function stopNewsHeadTimer() {
 function selectNewsHead(index) {
   currentNewsHeadIndex.value = index
   startNewsHeadTimer()
+}
+
+// Directory Carousel Navigation
+const activeDirectoryIndex = ref(0)
+
+function scrollToSection(id) {
+  const el = document.getElementById(id)
+  if (el) el.scrollIntoView({ behavior: 'smooth' })
 }
 
 function prevDirectory() {
@@ -62,9 +105,18 @@ function handleKeydown(event) {
   }
 }
 
+watch(() => data.value.profile?.title, (newTitle) => {
+  if (newTitle) runTextScramble(newTitle)
+})
+
 onMounted(async () => {
   try {
     data.value = await rpc('getPublicData')
+    if (data.value.profile?.title) {
+      runTextScramble(data.value.profile.title)
+    } else {
+      runTextScramble('PALE MEKA FUTURE')
+    }
     startNewsHeadTimer()
   } catch (e) {
     error.value = e.message
@@ -74,6 +126,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopNewsHeadTimer()
+  if (scrambleTimer) clearInterval(scrambleTimer)
   window.removeEventListener('keydown', handleKeydown)
 })
 </script>
@@ -109,15 +162,11 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <!-- Split Hero Section: Far Left Title & Far Right News Head Slider -->
+      <!-- Split Hero Section: Far Left Title (Scramble Animated) & Far Right News Head Slider -->
       <section id="hero" class="meka-hero-split">
-        <!-- Far Left Column -->
+        <!-- Far Left Column with Animated Title -->
         <div class="meka-hero-left">
-          <p class="meka-eyebrow">
-            <span class="meka-eyebrow-status"></span>
-            <span>MONOLITHIC SKY-CITY // SYSTEM ONLINE</span>
-          </p>
-          <h1 class="meka-hero-title">{{ data.profile.title || 'PALE MEKA FUTURE' }}</h1>
+          <h1 class="meka-hero-title" v-html="displayedTitle || data.profile.title || 'PALE MEKA FUTURE'"></h1>
           <div class="meka-underline-mark"></div>
           <p class="meka-hero-bio">
             {{ data.profile.bio || 'Precise, airy, and high-tech digital artifacts portal framed within a monolithic sky-city aesthetic.' }}
@@ -139,9 +188,9 @@ onUnmounted(() => {
             <div class="news-head-overlay"></div>
             <div class="news-head-content">
               <p class="news-head-tag">NEWS HEAD // {{ String(idx + 1).padStart(2, '0') }}</p>
-              <h3 class="news-head-title">{{ item.title }}</h3>
+              <h3 class="news-head-title">{{ item.label || item.title }}</h3>
               <p class="news-head-subtitle">{{ item.subtitle }}</p>
-              <a v-if="item.linkUrl" :href="item.linkUrl" target="_blank" rel="noopener" class="btn-amber" style="padding: 6px 16px; font-size: 11px;">
+              <a v-if="item.url || item.linkUrl" :href="item.url || item.linkUrl" target="_blank" rel="noopener" class="btn-amber" style="padding: 6px 16px; font-size: 11px;">
                 {{ item.buttonText || 'EXPLORE ARTIFACT →' }}
               </a>
             </div>
@@ -160,17 +209,22 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Broadcast Ticker Section -->
+      <!-- Smooth Continuous Broadcast Marquee Section -->
       <section id="broadcast" v-if="data.broadcast && data.broadcast.length" class="meka-ticker-section">
-        <div class="meka-ticker-track">
-          <div v-for="item in data.broadcast" :key="item.id" class="meka-ticker-item">
-            <span class="meka-ticker-tag">SYS // BROADCAST</span>
-            <span>{{ item.title }} — {{ item.body }}</span>
+        <div class="meka-ticker-wrapper">
+          <!-- Track 1 -->
+          <div class="meka-ticker-track-group">
+            <div v-for="item in data.broadcast" :key="'t1-' + item.id" class="meka-ticker-item">
+              <span class="meka-ticker-tag">BROADCAST</span>
+              <span>{{ item.title }} — {{ item.body }}</span>
+            </div>
           </div>
-          <!-- Loop duplicate for continuous marquee -->
-          <div v-for="item in data.broadcast" :key="'dup-' + item.id" class="meka-ticker-item">
-            <span class="meka-ticker-tag">SYS // BROADCAST</span>
-            <span>{{ item.title }} — {{ item.body }}</span>
+          <!-- Track 2 (Seamless Mirror Loop) -->
+          <div class="meka-ticker-track-group" aria-hidden="true">
+            <div v-for="item in data.broadcast" :key="'t2-' + item.id" class="meka-ticker-item">
+              <span class="meka-ticker-tag">BROADCAST</span>
+              <span>{{ item.title }} — {{ item.body }}</span>
+            </div>
           </div>
         </div>
       </section>
@@ -211,6 +265,9 @@ onUnmounted(() => {
             <span style="color: var(--color-amber-gold); margin-right: 12px;">{{ data.links[activeDirectoryIndex]?.icon || '❖' }}</span>
             {{ data.links[activeDirectoryIndex]?.label }}
           </h2>
+          <p v-if="data.links[activeDirectoryIndex]?.subtitle" style="color: rgba(255, 255, 255, 0.85); font-size: 14px; margin-bottom: 16px;">
+            {{ data.links[activeDirectoryIndex]?.subtitle }}
+          </p>
           <span class="btn-amber" style="display: inline-flex; font-size: 11px; padding: 6px 16px;">
             OPEN DIRECTORY LINK ↗
           </span>

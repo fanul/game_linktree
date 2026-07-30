@@ -1,7 +1,6 @@
 const DEFAULT_SUPER_ADMIN_EMAIL = 'fanul.doang@gmail.com';
 const DEFAULT_DRIVE_FOLDER_ID = '1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR';
 const DEFAULT_NEWS_HEAD_FOLDER_ID = '1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs';
-const DEFAULT_DIRECTORY_FOLDER_ID = '1h4xQ-uxN7f7rZJKJiq0yH_Xjz4WOfctR';
 const MAX_RPC_BYTES = 10000000;
 
 const FULL_PROXY_RPC_HANDLERS = {
@@ -44,15 +43,17 @@ function getPublicData() {
   const days = Math.max(1, Number(settings.themeDays) || 3);
   const themeName = themes[Math.floor(Date.now() / 86400000 / days) % themes.length];
   
-  const activeNewsHead = (data.newsHead || [])
-    .filter(function (item) { return item.active !== false; })
+  const allItems = data.items || [];
+  
+  const activeNewsHead = allItems
+    .filter(function (x) { return x.showInNewsHead === true && x.active !== false; })
     .slice(0, Math.max(1, Number(settings.maxNewsHead) || 5));
 
-  const activeBroadcast = (data.broadcast || data.news || [])
-    .filter(function (item) { return item.active !== false; });
+  const activeLinks = allItems
+    .filter(function (x) { return x.showInDirectory !== false && x.active !== false; });
 
-  const activeLinks = (data.links || [])
-    .filter(function (item) { return item.active !== false; });
+  const activeBroadcast = (data.broadcast || data.news || [])
+    .filter(function (x) { return x.active !== false; });
 
   return {
     profile: data.profile || defaultData_().profile,
@@ -110,9 +111,11 @@ function uploadFileToDrive(idToken, filePayload) {
   
   let folderId = filePayload.folderId;
   if (!folderId) {
-    if (filePayload.targetType === 'newsHead') folderId = settings.newsHeadFolderId || DEFAULT_NEWS_HEAD_FOLDER_ID;
-    else if (filePayload.targetType === 'directory') folderId = settings.directoryFolderId || DEFAULT_DIRECTORY_FOLDER_ID;
-    else folderId = settings.driveFolderId || DEFAULT_DRIVE_FOLDER_ID;
+    if (filePayload.targetField === 'bgUrl') {
+      folderId = settings.driveFolderId || DEFAULT_DRIVE_FOLDER_ID;
+    } else {
+      folderId = settings.newsHeadFolderId || DEFAULT_NEWS_HEAD_FOLDER_ID;
+    }
   }
 
   const folder = DriveApp.getFolderById(folderId);
@@ -172,18 +175,60 @@ function validateData_(input) {
     avatarUrl: url_(input.profile && input.profile.avatarUrl),
     bgUrl: url_(input.profile && input.profile.bgUrl)
   };
-  
-  clean.newsHead = array_(input.newsHead, 20).map(function (x) {
+
+  // Unified items
+  let rawItems = input.items;
+  if (!Array.isArray(rawItems) || !rawItems.length) {
+    // Migration fallback from legacy newsHead and links
+    rawItems = [];
+    (input.newsHead || []).forEach(function (x) {
+      rawItems.push({
+        id: x.id || id_(null),
+        label: x.title,
+        subtitle: x.subtitle,
+        url: x.linkUrl,
+        icon: '❖',
+        imageUrl: x.imageUrl,
+        buttonText: x.buttonText || 'EXPLORE ARTIFACT →',
+        showInNewsHead: true,
+        showInDirectory: false,
+        active: x.active !== false
+      });
+    });
+    (input.links || []).forEach(function (x) {
+      rawItems.push({
+        id: x.id || id_(null),
+        label: x.label,
+        subtitle: '',
+        url: x.url,
+        icon: x.icon || '❖',
+        imageUrl: x.imageUrl,
+        buttonText: 'EXPLORE →',
+        showInNewsHead: false,
+        showInDirectory: true,
+        active: x.active !== false
+      });
+    });
+  }
+
+  clean.items = array_(rawItems, 200).map(function (x) {
     return {
       id: id_(x.id),
-      title: text_(x.title, 150),
+      label: text_(x.label || x.title, 150),
       subtitle: text_(x.subtitle, 300),
+      url: url_(x.url || x.linkUrl),
+      icon: text_(x.icon || '❖', 8),
       imageUrl: url_(x.imageUrl),
-      linkUrl: url_(x.linkUrl),
       buttonText: text_(x.buttonText || 'EXPLORE ARTIFACT →', 50),
-      active: x.active === true
+      showInNewsHead: x.showInNewsHead === true,
+      showInDirectory: x.showInDirectory !== false,
+      active: x.active !== false
     };
   });
+
+  // Maintain newsHead and links helper getters for backward compatibility
+  clean.newsHead = clean.items.filter(function (x) { return x.showInNewsHead; });
+  clean.links = clean.items.filter(function (x) { return x.showInDirectory; });
 
   const rawBroadcast = input.broadcast || input.news;
   clean.broadcast = array_(rawBroadcast, 50).map(function (x) {
@@ -192,28 +237,15 @@ function validateData_(input) {
       title: text_(x.title, 150),
       body: html_(x.body, 5000),
       imageUrl: url_(x.imageUrl),
-      active: x.active === true
+      active: x.active !== false
     };
   });
-  // Maintain backward compatibility with news field
   clean.news = clean.broadcast;
-
-  clean.links = array_(input.links, 100).map(function (x) {
-    return {
-      id: id_(x.id),
-      label: text_(x.label, 100),
-      url: url_(x.url, true),
-      icon: text_(x.icon, 8),
-      imageUrl: url_(x.imageUrl),
-      active: x.active === true
-    };
-  });
 
   const s = input.settings || {};
   clean.settings = {
     driveFolderId: id_(s.driveFolderId || DEFAULT_DRIVE_FOLDER_ID, true),
     newsHeadFolderId: id_(s.newsHeadFolderId || DEFAULT_NEWS_HEAD_FOLDER_ID, true),
-    directoryFolderId: id_(s.directoryFolderId || DEFAULT_DIRECTORY_FOLDER_ID, true),
     spreadsheetId: id_(s.spreadsheetId, true),
     newsHeadInterval: Math.min(60, Math.max(1, Number(s.newsHeadInterval) || 5)),
     maxNewsHead: Math.min(20, Math.max(1, Number(s.maxNewsHead) || 5)),
@@ -237,28 +269,26 @@ function defaultData_() {
       avatarUrl: '',
       bgUrl: ''
     },
-    newsHead: [
+    items: [
       {
-        id: 'nh-1',
-        title: 'MONOLITHIC SKY-CITY',
+        id: 'item-1',
+        label: 'MONOLITHIC SKY-CITY',
         subtitle: 'High-tech architectural portal system initialized.',
+        url: 'https://github.com/fanul',
+        icon: '❖',
         imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
-        linkUrl: 'https://github.com/fanul',
         buttonText: 'EXPLORE ARTIFACT →',
+        showInNewsHead: true,
+        showInDirectory: true,
         active: true
       }
     ],
     broadcast: [
       { id: 'b-1', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', imageUrl: '', active: true }
     ],
-    news: [
-      { id: 'b-1', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', imageUrl: '', active: true }
-    ],
-    links: [],
     settings: {
       driveFolderId: DEFAULT_DRIVE_FOLDER_ID,
       newsHeadFolderId: DEFAULT_NEWS_HEAD_FOLDER_ID,
-      directoryFolderId: DEFAULT_DIRECTORY_FOLDER_ID,
       spreadsheetId: '',
       newsHeadInterval: 5,
       maxNewsHead: 5,
@@ -282,12 +312,12 @@ function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
   profileSheet.appendRow(['Title', 'Bio', 'AvatarUrl', 'BgUrl', 'LastUpdated']);
   profileSheet.appendRow([data.profile.title, data.profile.bio, data.profile.avatarUrl, data.profile.bgUrl, new Date().toISOString()]);
 
-  // NewsHead Sheet
-  const nhSheet = book.getSheetByName('NewsHead') || book.insertSheet('NewsHead');
-  nhSheet.clear();
-  nhSheet.appendRow(['ID', 'Title', 'Subtitle', 'ImageUrl', 'LinkUrl', 'Active']);
-  (data.newsHead || []).forEach(function (x) {
-    nhSheet.appendRow([x.id, x.title, x.subtitle, x.imageUrl, x.linkUrl, String(x.active)]);
+  // Unified Items Sheet
+  const itemsSheet = book.getSheetByName('Items') || book.insertSheet('Items');
+  itemsSheet.clear();
+  itemsSheet.appendRow(['ID', 'Label', 'Subtitle', 'URL', 'Icon', 'ImageUrl', 'ButtonText', 'ShowInNewsHead', 'ShowInDirectory', 'Active']);
+  (data.items || []).forEach(function (x) {
+    itemsSheet.appendRow([x.id, x.label, x.subtitle, x.url, x.icon, x.imageUrl, x.buttonText, String(x.showInNewsHead), String(x.showInDirectory), String(x.active)]);
   });
 
   // Broadcast Sheet
@@ -297,26 +327,6 @@ function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
   (data.broadcast || []).forEach(function (x) {
     bcSheet.appendRow([x.id, x.title, x.body, String(x.active)]);
   });
-
-  // Directory Sheet
-  const dirSheet = book.getSheetByName('Directory') || book.insertSheet('Directory');
-  dirSheet.clear();
-  dirSheet.appendRow(['ID', 'Label', 'URL', 'Icon', 'ImageUrl', 'Active']);
-  (data.links || []).forEach(function (x) {
-    dirSheet.appendRow([x.id, x.label, x.url, x.icon, x.imageUrl, String(x.active)]);
-  });
-
-  // Settings Sheet
-  const setSheet = book.getSheetByName('Settings') || book.insertSheet('Settings');
-  setSheet.clear();
-  setSheet.appendRow(['DriveFolderId', 'NewsHeadFolderId', 'DirectoryFolderId', 'NewsHeadIntervalSec', 'MaxNewsHead']);
-  setSheet.appendRow([
-    data.settings.driveFolderId,
-    data.settings.newsHeadFolderId,
-    data.settings.directoryFolderId,
-    data.settings.newsHeadInterval,
-    data.settings.maxNewsHead
-  ]);
 
   // Audit Log Sheet
   appendAudit_(spreadsheetId, 'syncSpreadsheet', adminEmail);
