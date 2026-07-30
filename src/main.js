@@ -8,17 +8,25 @@ const app = createApp(App)
 app.config.errorHandler = (err) => {
   console.error('Vue Error:', err)
   const el = document.getElementById('app')
-  if (el && (!el.children || !el.children.length)) {
-    el.innerHTML = `<div style="padding: 40px; color: #ff4d6d; font-family: monospace;">VUE ERROR: ${err?.message || String(err)}</div>`
+  if (el) {
+    el.innerHTML = `<div style="padding: 40px; color: #ff4d6d; font-family: monospace; background: #0b1a27; min-height: 100vh;">VUE ERROR: ${err?.message || String(err)}</div>`
   }
 }
 
 window.addEventListener('error', (e) => {
   console.error('Global Error:', e)
   const el = document.getElementById('app')
-  if (el && (!el.children || !el.children.length)) {
-    el.innerHTML = `<div style="padding: 40px; color: #ff4d6d; font-family: monospace;">SCRIPT ERROR: ${e.message}</div>`
+  if (el) {
+    el.innerHTML = `<div style="padding: 40px; color: #ff4d6d; font-family: monospace; background: #0b1a27; min-height: 100vh;">SCRIPT ERROR: ${e.message || String(e)}</div>`
   }
 })
 
-app.use(router).mount('#app')
+try {
+  app.use(router).mount('#app')
+} catch (err) {
+  console.error('Mount Error:', err)
+  const el = document.getElementById('app')
+  if (el) {
+    el.innerHTML = `<div style="padding: 40px; color: #ff4d6d; font-family: monospace; background: #0b1a27; min-height: 100vh;">MOUNT ERROR: ${err?.message || String(err)}</div>`
+  }
+}
