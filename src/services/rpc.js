@@ -1,4 +1,5 @@
 export function rpc(functionName, ...args) {
+  if (window.__LOG_STEP) window.__LOG_STEP(`RPC: Requesting '${functionName}'...`)
   return new Promise((resolve, reject) => {
     let attempts = 0
     let resolved = false
@@ -6,17 +7,20 @@ export function rpc(functionName, ...args) {
     const timeout = setTimeout(() => {
       if (!resolved) {
         resolved = true
+        if (window.__LOG_STEP) window.__LOG_STEP(`RPC: Timeout (5s) for '${functionName}'`, true)
         reject(new Error('RPC call timeout.'))
       }
     }, 5000)
 
     const checkAndRun = () => {
       if (globalThis.google?.script?.run) {
+        if (window.__LOG_STEP) window.__LOG_STEP(`RPC: Native google.script.run available. Triggering '${functionName}'...`)
         globalThis.google.script.run
           .withSuccessHandler(res => {
             if (!resolved) {
               resolved = true
               clearTimeout(timeout)
+              if (window.__LOG_STEP) window.__LOG_STEP(`RPC: Success for '${functionName}'`)
               resolve(res)
             }
           })
@@ -24,7 +28,9 @@ export function rpc(functionName, ...args) {
             if (!resolved) {
               resolved = true
               clearTimeout(timeout)
-              reject(new Error(error?.message || String(error)))
+              const errMsg = error?.message || String(error)
+              if (window.__LOG_STEP) window.__LOG_STEP(`RPC: Server Error for '${functionName}': ${errMsg}`, true)
+              reject(new Error(errMsg))
             }
           })
           [functionName](...args)
@@ -35,6 +41,7 @@ export function rpc(functionName, ...args) {
         if (!resolved) {
           resolved = true
           clearTimeout(timeout)
+          if (window.__LOG_STEP) window.__LOG_STEP(`RPC: google.script.run not available after 30 attempts`, true)
           reject(new Error('RPC GAS tidak tersedia.'))
         }
       }

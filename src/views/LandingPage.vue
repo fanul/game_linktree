@@ -182,12 +182,15 @@ function handleKeydown(event) {
 }
 
 onMounted(async () => {
+  if (window.__LOG_STEP) window.__LOG_STEP('4. LandingPage onMounted initialized. Starting scramble & timers...')
   startScrambleScheduler()
   startNewsHeadTimer()
 
   try {
+    if (window.__LOG_STEP) window.__LOG_STEP('5. Invoking rpc("getPublicData")...')
     const res = await rpc('getPublicData')
     if (res) {
+      if (window.__LOG_STEP) window.__LOG_STEP(`6. getPublicData returned: profile="${res.profile?.title}", items=${res.newsHead?.length || 0}`)
       if (res.profile && res.profile.title) data.value.profile = res.profile
       if (res.newsHead && res.newsHead.length) data.value.newsHead = res.newsHead
       if (res.broadcast && res.broadcast.length) data.value.broadcast = res.broadcast
@@ -197,6 +200,7 @@ onMounted(async () => {
       startNewsHeadTimer()
     }
   } catch (e) {
+    if (window.__LOG_STEP) window.__LOG_STEP('7. RPC load error: ' + e.message, true)
     console.warn('RPC load notice:', e)
   }
   window.addEventListener('keydown', handleKeydown)
