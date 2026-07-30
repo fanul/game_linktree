@@ -16,7 +16,9 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.__full_proxy_html === '1') {
     return jsonResponse_({ ok: true, html: HtmlService.createHtmlOutputFromFile('index').getContent() });
   }
-  return HtmlService.createHtmlOutputFromFile('index').setTitle('Pale Meka Future Portal');
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('Pale Meka Future Portal')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function doPost(e) {

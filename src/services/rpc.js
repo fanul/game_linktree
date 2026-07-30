@@ -1,7 +1,20 @@
 export function rpc(functionName, ...args) {
   return new Promise((resolve, reject) => {
-    if (!globalThis.google?.script?.run) return reject(new Error('RPC GAS tidak tersedia.'))
-    globalThis.google.script.run.withSuccessHandler(resolve).withFailureHandler(error => reject(new Error(error?.message || String(error))))[functionName](...args)
+    let attempts = 0
+    const checkAndRun = () => {
+      if (globalThis.google?.script?.run) {
+        globalThis.google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(error => reject(new Error(error?.message || String(error))))
+          [functionName](...args)
+      } else if (attempts < 50) {
+        attempts++
+        setTimeout(checkAndRun, 50)
+      } else {
+        reject(new Error('RPC GAS tidak tersedia.'))
+      }
+    }
+    checkAndRun()
   })
 }
 
@@ -19,4 +32,3 @@ export function fileToBase64(file) {
     reader.onerror = error => reject(error)
   })
 }
-
