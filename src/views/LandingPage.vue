@@ -47,6 +47,13 @@ function nextDirectory() {
   activeDirectoryIndex.value = (activeDirectoryIndex.value + 1) % data.value.links.length
 }
 
+function openActiveDirectoryUrl() {
+  const current = data.value.links && data.value.links[activeDirectoryIndex.value]
+  if (current && current.url) {
+    window.open(current.url, '_blank', 'noopener')
+  }
+}
+
 function handleKeydown(event) {
   if (event.key === 'ArrowLeft') {
     prevDirectory()
@@ -102,9 +109,9 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <!-- Split Hero Section (Left: Headline & Bio, Right: News Head Slider) -->
+      <!-- Split Hero Section: Far Left Title & Far Right News Head Slider -->
       <section id="hero" class="meka-hero-split">
-        <!-- Left Column -->
+        <!-- Far Left Column -->
         <div class="meka-hero-left">
           <p class="meka-eyebrow">
             <span class="meka-eyebrow-status"></span>
@@ -117,7 +124,7 @@ onUnmounted(() => {
           </p>
         </div>
 
-        <!-- Right Column: News Head Slider -->
+        <!-- Far Right Column: News Head Slider -->
         <div class="news-head-slider" v-if="data.newsHead && data.newsHead.length">
           <div 
             v-for="(item, idx) in data.newsHead" 
@@ -135,7 +142,7 @@ onUnmounted(() => {
               <h3 class="news-head-title">{{ item.title }}</h3>
               <p class="news-head-subtitle">{{ item.subtitle }}</p>
               <a v-if="item.linkUrl" :href="item.linkUrl" target="_blank" rel="noopener" class="btn-amber" style="padding: 6px 16px; font-size: 11px;">
-                EXPLORE ARTIFACT →
+                {{ item.buttonText || 'EXPLORE ARTIFACT →' }}
               </a>
             </div>
           </div>
@@ -168,49 +175,51 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Directory Carousel & Cards Section -->
-      <main id="directory" class="meka-directory-section" v-if="data.links && data.links.length">
-        <div class="meka-directory-header">
-          <div class="meka-section-title" style="margin-bottom: 0; flex: 1;">
-            <span>SYSTEM DIRECTORY // CONSTRUCTED MODULES</span>
-          </div>
+      <!-- Full-Bleed Directory Showcase Section (Below Broadcast) -->
+      <section 
+        id="directory" 
+        class="directory-showcase-container"
+        v-if="data.links && data.links.length"
+        @click="openActiveDirectoryUrl"
+      >
+        <!-- Background Image of Active Directory Item -->
+        <div 
+          class="directory-showcase-bg"
+          :style="{ backgroundImage: `url(${data.links[activeDirectoryIndex]?.imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1600&auto=format&fit=crop'})` }"
+        ></div>
+        <div class="directory-showcase-overlay"></div>
 
-          <div class="directory-nav-controls">
-            <span class="directory-counter">
-              {{ String(activeDirectoryIndex + 1).padStart(2, '0') }} / {{ String(data.links.length).padStart(2, '0') }}
-            </span>
-            <button class="btn-arrow" @click="prevDirectory" title="Navigasi Kiri (Arrow Left)">←</button>
-            <button class="btn-arrow" @click="nextDirectory" title="Navigasi Kanan (Arrow Right)">→</button>
-          </div>
+        <!-- Counter Badge Overlay -->
+        <div class="directory-showcase-counter">
+          {{ String(activeDirectoryIndex + 1).padStart(2, '0') }} / {{ String(data.links.length).padStart(2, '0') }}
         </div>
 
-        <div class="directory-cards-grid">
-          <a 
-            v-for="(link, idx) in data.links" 
-            :key="link.id" 
-            :href="link.url" 
-            target="_blank" 
-            rel="noopener"
-            class="directory-card"
-            :class="{ active: idx === activeDirectoryIndex }"
-            @mouseenter="activeDirectoryIndex = idx"
-          >
-            <div 
-              class="directory-card-bg" 
-              :style="{ backgroundImage: `url(${link.imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop'})` }"
-            ></div>
-            <div class="directory-card-overlay"></div>
-            <div class="directory-card-content">
-              <span class="directory-card-icon">{{ link.icon || '❖' }}</span>
-              <span class="directory-card-label">{{ link.label }}</span>
-            </div>
-          </a>
-        </div>
+        <!-- Glowing Pulsing Left Navigation Arrow (<) -->
+        <button class="directory-nav-arrow prev" @click.stop="prevDirectory" title="Navigasi Kiri (<)">
+          &lt;
+        </button>
 
-        <p v-if="error" style="color: #ff4d6d; font-family: var(--font-mono); font-size: 11px; margin-top: 16px;">
-          ERR // {{ error }}
-        </p>
-      </main>
+        <!-- Glowing Pulsing Right Navigation Arrow (>) -->
+        <button class="directory-nav-arrow next" @click.stop="nextDirectory" title="Navigasi Kanan (>)">
+          &gt;
+        </button>
+
+        <!-- Active Item Overlay Details -->
+        <div class="directory-showcase-content">
+          <p class="directory-showcase-badge">DIRECTORY MODULE {{ String(activeDirectoryIndex + 1).padStart(2, '0') }}</p>
+          <h2 class="directory-showcase-title">
+            <span style="color: var(--color-amber-gold); margin-right: 12px;">{{ data.links[activeDirectoryIndex]?.icon || '❖' }}</span>
+            {{ data.links[activeDirectoryIndex]?.label }}
+          </h2>
+          <span class="btn-amber" style="display: inline-flex; font-size: 11px; padding: 6px 16px;">
+            OPEN DIRECTORY LINK ↗
+          </span>
+        </div>
+      </section>
+
+      <p v-if="error" style="color: #ff4d6d; font-family: var(--font-mono); font-size: 11px; text-align: center; margin-bottom: 20px;">
+        ERR // {{ error }}
+      </p>
 
       <!-- Footer Chrome -->
       <footer class="meka-footer">

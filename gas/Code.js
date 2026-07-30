@@ -180,6 +180,7 @@ function validateData_(input) {
       subtitle: text_(x.subtitle, 300),
       imageUrl: url_(x.imageUrl),
       linkUrl: url_(x.linkUrl),
+      buttonText: text_(x.buttonText || 'EXPLORE ARTIFACT →', 50),
       active: x.active === true
     };
   });
@@ -243,6 +244,7 @@ function defaultData_() {
         subtitle: 'High-tech architectural portal system initialized.',
         imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
         linkUrl: 'https://github.com/fanul',
+        buttonText: 'EXPLORE ARTIFACT →',
         active: true
       }
     ],

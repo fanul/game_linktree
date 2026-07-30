@@ -25,7 +25,7 @@
   --glow-cyan: 0 0 15px rgba(26, 198, 255, 0.25);
   --glow-cyan-strong: 0 0 25px rgba(26, 198, 255, 0.45);
   --glow-amber: 0 0 20px rgba(255, 193, 7, 0.5);
-  --glow-amber-strong: 0 0 30px rgba(255, 193, 7, 0.75);
+  --glow-amber-strong: 0 0 35px rgba(255, 193, 7, 0.85);
 }
 
 * {
@@ -88,7 +88,7 @@ button, input, textarea, select {
 
 /* Chamfered Edge Utility Class */
 .chamfered-card {
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
 }
 
 .chamfered-btn {
@@ -248,15 +248,20 @@ button, input, textarea, select {
   opacity: 0.88;
 }
 
-/* Split Hero Section with News Head Slider */
+/* Split Hero Section - Flush Far Left Title & Far Right Slider */
 .meka-hero-split {
-  padding: 50px 36px 30px;
-  max-width: 1280px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 40px;
+  width: 100%;
+  padding: 40px 36px 30px;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 32px;
+}
+
+.meka-hero-left {
+  flex: 1;
+  max-width: 580px;
+  text-align: left;
 }
 
 .meka-eyebrow {
@@ -282,7 +287,7 @@ button, input, textarea, select {
 
 .meka-hero-title {
   font-family: var(--font-headline);
-  font-size: clamp(36px, 5.5vw, 68px);
+  font-size: clamp(38px, 5.5vw, 72px);
   font-weight: 900;
   line-height: 0.92;
   color: var(--color-navy-cyan);
@@ -292,7 +297,7 @@ button, input, textarea, select {
 }
 
 .meka-underline-mark {
-  width: 55%;
+  width: 60%;
   max-width: 320px;
   height: 3px;
   background: linear-gradient(90deg, var(--color-electric-cyan) 0%, var(--color-amber-gold) 100%);
@@ -304,15 +309,14 @@ button, input, textarea, select {
   font-family: var(--font-body);
   font-size: 16px;
   color: var(--color-medium-blue-gray);
-  max-width: 540px;
-  margin-bottom: 28px;
+  max-width: 520px;
   font-weight: 500;
 }
 
-/* News Head Slider (Hero Right Side) */
+/* News Head Slider (Hero Far Right) */
 .news-head-slider {
   position: relative;
-  width: 100%;
+  width: 520px;
   height: 360px;
   background: rgba(255, 255, 255, 0.90);
   border: 1px solid var(--color-soft-gray-border);
@@ -322,6 +326,7 @@ button, input, textarea, select {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .news-head-bg {
@@ -329,7 +334,7 @@ button, input, textarea, select {
   inset: 0;
   background-size: cover;
   background-position: center;
-  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+  transition: opacity 0.6s ease-in-out;
 }
 
 .news-head-overlay {
@@ -408,7 +413,7 @@ button, input, textarea, select {
   box-shadow: var(--glow-cyan);
   overflow: hidden;
   padding: 12px 0;
-  margin-bottom: 44px;
+  margin-bottom: 30px;
 }
 
 .meka-ticker-track {
@@ -444,132 +449,126 @@ button, input, textarea, select {
   100% { transform: translateX(-50%); }
 }
 
-/* Directory Section with Visual Carousel & Keyboard Shortcuts */
-.meka-directory-section {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 36px 70px;
-  width: 100%;
-}
-
-.meka-directory-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.directory-nav-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.directory-counter {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-navy-cyan);
-  background: var(--color-light-gray-blue);
-  padding: 6px 14px;
-  border: 1px solid var(--color-soft-gray-border);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-
-.btn-arrow {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--color-soft-gray-border);
-  color: var(--color-navy-cyan);
-  font-size: 16px;
-  font-weight: 700;
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-arrow:hover {
-  background: var(--color-electric-cyan);
-  color: #051622;
-  box-shadow: var(--glow-cyan-strong);
-}
-
-/* Directory Cards Grid */
-.directory-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-}
-
-.directory-card {
+/* Full-Bleed Directory Showcase Banner (Below Broadcast) */
+.directory-showcase-container {
   position: relative;
-  height: 240px;
-  background: rgba(255, 255, 255, 0.90);
-  border: 1px solid var(--color-soft-gray-border);
-  box-shadow: var(--glow-cyan);
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  width: 100%;
+  min-height: 480px;
+  background: #0b1a27;
   overflow: hidden;
-  text-decoration: none;
+  margin-bottom: 40px;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  align-items: flex-end;
   cursor: pointer;
-  transition: all 0.25s ease;
 }
 
-.directory-card-bg {
+.directory-showcase-bg {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-  transition: transform 0.4s ease;
+  transition: opacity 0.5s ease, transform 0.6s ease;
 }
 
-.directory-card-overlay {
+.directory-showcase-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(26, 59, 86, 0.25) 0%, rgba(10, 25, 40, 0.88) 90%);
+  background: radial-gradient(circle at 50% 30%, transparent 20%, rgba(10, 25, 40, 0.75) 75%),
+              linear-gradient(180deg, rgba(10,25,40,0.2) 0%, rgba(10, 25, 40, 0.95) 90%);
 }
 
-.directory-card-content {
+.directory-showcase-content {
   position: relative;
   z-index: 2;
-  padding: 20px 24px;
+  padding: 40px 60px;
+  color: var(--color-stark-white);
+  max-width: 800px;
+}
+
+.directory-showcase-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-amber-gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.directory-showcase-title {
+  font-family: var(--font-headline);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 900;
+  color: var(--color-stark-white);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  line-height: 1.05;
+}
+
+.directory-showcase-counter {
+  position: absolute;
+  top: 24px;
+  right: 36px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-amber-gold);
+  background: rgba(10, 25, 40, 0.85);
+  border: 1px solid var(--color-amber-gold);
+  box-shadow: var(--glow-amber);
+  padding: 6px 16px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+/* Glowing Pulsing Navigation Arrows (< and >) */
+.directory-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: var(--color-stark-white);
-}
-
-.directory-card-icon {
-  font-size: 24px;
-  color: var(--color-electric-cyan);
-}
-
-.directory-card-label {
-  font-family: var(--font-headline);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-/* Active Amber Glowing Aura State */
-.directory-card.active {
+  justify-content: center;
+  background: rgba(10, 25, 40, 0.85);
   border: 2px solid var(--color-amber-gold);
-  box-shadow: var(--glow-amber-strong);
-  transform: translateY(-4px);
-}
-
-.directory-card.active .directory-card-bg {
-  transform: scale(1.05);
-}
-
-.directory-card.active .directory-card-icon {
   color: var(--color-amber-gold);
+  font-family: var(--font-headline);
+  font-size: 26px;
+  font-weight: 900;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  box-shadow: var(--glow-amber-strong);
+  cursor: pointer;
+  animation: pulseGlow 2s infinite ease-in-out;
+  transition: all 0.2s ease;
+}
+
+.directory-nav-arrow.prev {
+  left: 24px;
+}
+
+.directory-nav-arrow.next {
+  right: 24px;
+}
+
+.directory-nav-arrow:hover {
+  background: var(--color-amber-gold);
+  color: #051622;
+  box-shadow: 0 0 35px rgba(255, 193, 7, 0.95);
+  transform: translateY(-50%) scale(1.1);
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+    border-color: var(--color-amber-gold);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.9);
+    border-color: #ffe066;
+  }
 }
 
 /* Footer Chrome */
@@ -597,27 +596,27 @@ button, input, textarea, select {
   text-decoration: underline;
 }
 
-/* Admin Studio Styles */
+/* Admin Studio Styles - Compact & Non-overlapping Controls */
 .admin-container {
-  max-width: 1150px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 44px 28px;
+  padding: 36px 28px;
 }
 
 .admin-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--color-soft-gray-border);
   box-shadow: var(--glow-cyan);
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
-  padding: 28px;
-  margin-bottom: 28px;
+  padding: 24px;
+  margin-bottom: 24px;
   backdrop-filter: blur(14px);
 }
 
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 28px;
+  gap: 24px;
 }
 
 .admin-grid-full {
@@ -627,8 +626,8 @@ button, input, textarea, select {
 .admin-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 
 .admin-field label {
@@ -643,11 +642,11 @@ button, input, textarea, select {
   background: var(--color-light-gray-blue);
   border: 1px solid var(--color-soft-gray-border);
   color: var(--color-navy-cyan);
-  padding: 12px 16px;
+  padding: 10px 14px;
   font-size: 13px;
   font-family: var(--font-body);
   clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .admin-input:focus, .admin-textarea:focus {
@@ -656,30 +655,37 @@ button, input, textarea, select {
   box-shadow: var(--glow-cyan);
 }
 
-.upload-box {
+.admin-inline-input {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px;
-  background: var(--color-light-gray-blue);
-  border: 1px dashed var(--color-soft-gray-border);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  gap: 6px;
 }
 
-.upload-preview {
-  width: 70px;
-  height: 45px;
-  object-fit: cover;
-  border: 1px solid var(--color-soft-gray-border);
+.upload-icon-btn {
+  padding: 8px 12px;
+  font-size: 11px;
+  background: var(--color-electric-cyan);
+  color: #051622;
+  border: none;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 @media (max-width: 960px) {
   .meka-hero-split {
-    grid-template-columns: 1fr;
-    gap: 30px;
+    flex-direction: column;
+    align-items: flex-start;
   }
   .news-head-slider {
-    height: 300px;
+    width: 100%;
+    height: 320px;
+    margin-left: 0;
+  }
+  .directory-showcase-container {
+    min-height: 360px;
   }
 }
 
@@ -696,10 +702,15 @@ button, input, textarea, select {
     overflow-x: auto;
   }
   .meka-hero-split {
-    padding: 30px 20px 20px;
+    padding: 24px 20px;
   }
-  .meka-directory-section {
-    padding: 0 20px 50px;
+  .directory-showcase-content {
+    padding: 24px 20px;
+  }
+  .directory-nav-arrow {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
   }
   .admin-grid {
     grid-template-columns: 1fr;
