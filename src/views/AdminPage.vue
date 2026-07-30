@@ -202,14 +202,22 @@ onMounted(() => {
               <label>Folder ID Background: 1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR</label>
               <input v-model="state.settings.driveFolderId" class="admin-input" placeholder="1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR">
             </div>
-            <div style="display: flex; gap: 16px; margin-top: 8px;">
-              <div class="admin-field" style="flex: 1;">
-                <label>Rolling Slider (detik)</label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
+              <div class="admin-field">
+                <label>Rolling Slider (s)</label>
                 <input v-model.number="state.settings.newsHeadInterval" type="number" min="1" max="60" class="admin-input" style="text-align: center;">
               </div>
-              <div class="admin-field" style="flex: 1;">
-                <label>Max Slider News Head</label>
+              <div class="admin-field">
+                <label>Max News Head</label>
                 <input v-model.number="state.settings.maxNewsHead" type="number" min="1" max="20" class="admin-input" style="text-align: center;">
+              </div>
+              <div class="admin-field">
+                <label>Jeda Judul (s)</label>
+                <input v-model.number="state.settings.scrambleDelay" type="number" min="0" max="60" class="admin-input" style="text-align: center;">
+              </div>
+              <div class="admin-field">
+                <label>Loop Judul (s)</label>
+                <input v-model.number="state.settings.scrambleInterval" type="number" min="2" max="120" class="admin-input" style="text-align: center;">
               </div>
             </div>
           </section>

@@ -249,6 +249,8 @@ function validateData_(input) {
     spreadsheetId: id_(s.spreadsheetId, true),
     newsHeadInterval: Math.min(60, Math.max(1, Number(s.newsHeadInterval) || 5)),
     maxNewsHead: Math.min(20, Math.max(1, Number(s.maxNewsHead) || 5)),
+    scrambleDelay: Math.min(60, Math.max(0, Number(s.scrambleDelay) || 2)),
+    scrambleInterval: Math.min(120, Math.max(2, Number(s.scrambleInterval) || 10)),
     themeDays: Math.min(365, Math.max(1, Number(s.themeDays) || 3)),
     themes: array_(s.themes, 20).map(function (x) { return text_(x, 30).toLowerCase(); }).filter(Boolean)
   };
@@ -292,6 +294,8 @@ function defaultData_() {
       spreadsheetId: '',
       newsHeadInterval: 5,
       maxNewsHead: 5,
+      scrambleDelay: 2,
+      scrambleInterval: 10,
       themeDays: 3,
       themes: ['pale-meka', 'sky-city']
     }

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { rpc } from '../services/rpc.js'
 
@@ -7,20 +7,21 @@ const router = useRouter()
 const data = ref({ profile: {}, newsHead: [], broadcast: [], links: [], settings: {} })
 const error = ref('')
 
-// Text Scramble Animation
+// Text Scramble Animation with Delay & Infinite Loop
 const displayedTitle = ref('')
 const chars = '!<>-_\\/[]{}—=+*^?#________'
-let scrambleTimer = null
+let scrambleFrameTimer = null
+let scrambleDelayTimer = null
+let scrambleLoopTimer = null
 
 function runTextScramble(newTitle) {
-  if (!newTitle) return
-  if (scrambleTimer) clearInterval(scrambleTimer)
+  const target = (newTitle || data.value.profile?.title || 'PALE MEKA FUTURE').toUpperCase()
+  if (scrambleFrameTimer) clearInterval(scrambleFrameTimer)
   
-  const target = newTitle.toUpperCase()
   let frame = 0
   const maxFrames = target.length * 3
   
-  scrambleTimer = setInterval(() => {
+  scrambleFrameTimer = setInterval(() => {
     let output = ''
     let complete = 0
     
@@ -42,14 +43,58 @@ function runTextScramble(newTitle) {
     
     if (complete === target.length || frame > maxFrames + 10) {
       displayedTitle.value = target
-      clearInterval(scrambleTimer)
-      scrambleTimer = null
+      clearInterval(scrambleFrameTimer)
+      scrambleFrameTimer = null
     }
   }, 35)
 }
 
-function goToAdmin() {
-  router.push('/admin')
+function startScrambleScheduler() {
+  stopScrambleScheduler()
+  
+  const title = data.value.profile?.title || 'PALE MEKA FUTURE'
+  displayedTitle.value = title.toUpperCase()
+  
+  const delaySec = Math.max(0, Number(data.value.settings?.scrambleDelay) ?? 2)
+  const intervalSec = Math.max(2, Number(data.value.settings?.scrambleInterval) ?? 10)
+
+  // Initial delay before first animation
+  scrambleDelayTimer = setTimeout(() => {
+    runTextScramble(title)
+    
+    // Infinite recurring loop
+    scrambleLoopTimer = setInterval(() => {
+      runTextScramble(title)
+    }, intervalSec * 1000)
+  }, delaySec * 1000)
+}
+
+function stopScrambleScheduler() {
+  if (scrambleFrameTimer) clearInterval(scrambleFrameTimer)
+  if (scrambleDelayTimer) clearTimeout(scrambleDelayTimer)
+  if (scrambleLoopTimer) clearInterval(scrambleLoopTimer)
+  scrambleFrameTimer = null
+  scrambleDelayTimer = null
+  scrambleLoopTimer = null
+}
+
+// Easter Egg: Double Right-Click Trigger
+let rightClickCount = 0
+let rightClickTimer = null
+
+function handleRightClick(event) {
+  event.preventDefault() // prevent standard browser context menu
+  rightClickCount++
+  
+  if (rightClickCount === 1) {
+    rightClickTimer = setTimeout(() => {
+      rightClickCount = 0
+    }, 500)
+  } else if (rightClickCount >= 2) {
+    if (rightClickTimer) clearTimeout(rightClickTimer)
+    rightClickCount = 0
+    router.push('/admin')
+  }
 }
 
 // News Head Slider Timer
@@ -106,18 +151,10 @@ function handleKeydown(event) {
   }
 }
 
-watch(() => data.value.profile?.title, (newTitle) => {
-  if (newTitle) runTextScramble(newTitle)
-})
-
 onMounted(async () => {
   try {
     data.value = await rpc('getPublicData')
-    if (data.value.profile?.title) {
-      runTextScramble(data.value.profile.title)
-    } else {
-      runTextScramble('PALE MEKA FUTURE')
-    }
+    startScrambleScheduler()
     startNewsHeadTimer()
   } catch (e) {
     error.value = e.message
@@ -127,7 +164,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopNewsHeadTimer()
-  if (scrambleTimer) clearInterval(scrambleTimer)
+  stopScrambleScheduler()
+  if (rightClickTimer) clearTimeout(rightClickTimer)
   window.removeEventListener('keydown', handleKeydown)
 })
 </script>
@@ -142,15 +180,15 @@ onUnmounted(() => {
     <div class="meka-bg-overlay"></div>
 
     <div class="meka-content">
-      <!-- Split Hero Section: Far Left Title (Scramble Animated + Easter Egg Double-Click) & Far Right News Head Slider -->
+      <!-- Split Hero Section: Far Left Title (Scramble Animated + Double Right-Click Easter Egg) & Far Right News Head Slider -->
       <section id="hero" class="meka-hero-split">
-        <!-- Far Left Column with Animated Title & Easter Egg -->
+        <!-- Far Left Column with Animated Title & Double Right-Click Easter Egg -->
         <div class="meka-hero-left">
           <h1 
             class="meka-hero-title" 
             v-html="displayedTitle || data.profile.title || 'PALE MEKA FUTURE'"
-            @dblclick="goToAdmin"
-            title="Klik 2x untuk membuka Admin Studio"
+            @contextmenu="handleRightClick"
+            title="Klik kanan 2x untuk membuka Admin Studio"
           ></h1>
           <div class="meka-underline-mark"></div>
           <p class="meka-hero-bio">
