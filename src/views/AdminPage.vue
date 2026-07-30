@@ -2,7 +2,6 @@
 import { onMounted, reactive, ref } from 'vue'
 import { adminArgs, fileToBase64, rpc } from '../services/rpc.js'
 
-const key = ref(sessionStorage.getItem('googleIdToken') || sessionStorage.getItem('adminKey') || '')
 const state = reactive({
   profile: { title: '', bio: '', avatarUrl: '', bgUrl: '' },
   news: [],
@@ -10,16 +9,14 @@ const state = reactive({
   settings: { driveFolderId: '1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR', spreadsheetId: '', themeDays: 3, themes: ['pale-meka', 'sky-city'] }
 })
 
-const status = ref('Masukkan Google ID Token atau Admin Key.')
+const status = ref('Memuat data...')
 const isUploading = ref(false)
 
 async function load() {
-  sessionStorage.setItem('googleIdToken', key.value)
-  sessionStorage.setItem('adminKey', key.value)
   try {
     const data = await rpc('getAdminData', ...adminArgs())
     Object.assign(state, data)
-    status.value = 'Data berhasil dimuat dari server.'
+    status.value = 'Data terhubung dengan server.'
   } catch (e) {
     status.value = 'Error: ' + e.message
   }
@@ -69,7 +66,7 @@ function addLink() {
 }
 
 onMounted(() => {
-  if (key.value) load()
+  load()
 })
 </script>
 
@@ -83,25 +80,14 @@ onMounted(() => {
           <span>PALE MEKA // ADMIN STUDIO</span>
         </router-link>
         <div class="meka-nav-actions">
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-medium-blue-gray); margin-right: 12px;">
+            {{ status }}
+          </span>
           <router-link to="/" class="btn-cyan">← LANDING</router-link>
         </div>
       </header>
 
       <main class="admin-container">
-        <!-- Authentication Card -->
-        <section class="admin-card">
-          <div class="admin-field">
-            <label>Authentication Token / Admin Key</label>
-            <div style="display: flex; gap: 14px;">
-              <input v-model="key" type="password" class="admin-input" placeholder="Google ID Token / Admin Key" style="flex: 1;">
-              <button class="btn-amber" @click="load">AUTHENTICATE & LOAD</button>
-            </div>
-            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-medium-blue-gray); margin-top: 8px;">
-              STATUS // {{ status }}
-            </span>
-          </div>
-        </section>
-
         <div class="admin-grid">
           <!-- Profile Settings -->
           <section class="admin-card">
