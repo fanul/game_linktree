@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { rpc } from '../services/rpc.js'
 
+const router = useRouter()
 const data = ref({ profile: {}, newsHead: [], broadcast: [], links: [], settings: {} })
 const error = ref('')
 
@@ -46,6 +48,10 @@ function runTextScramble(newTitle) {
   }, 35)
 }
 
+function goToAdmin() {
+  router.push('/admin')
+}
+
 // News Head Slider Timer
 const currentNewsHeadIndex = ref(0)
 let newsHeadTimer = null
@@ -74,11 +80,6 @@ function selectNewsHead(index) {
 
 // Directory Carousel Navigation
 const activeDirectoryIndex = ref(0)
-
-function scrollToSection(id) {
-  const el = document.getElementById(id)
-  if (el) el.scrollIntoView({ behavior: 'smooth' })
-}
 
 function prevDirectory() {
   if (!data.value.links || !data.value.links.length) return
@@ -141,32 +142,16 @@ onUnmounted(() => {
     <div class="meka-bg-overlay"></div>
 
     <div class="meka-content">
-      <!-- Pale Meka Top Navigation Bar -->
-      <header class="meka-navbar">
-        <a href="#" class="meka-brand">
-          <span class="meka-brand-glyph">⬡</span>
-          <span>{{ data.profile.title || 'PALE MEKA FUTURE' }}</span>
-        </a>
-
-        <ul class="meka-nav-items">
-          <li><a class="meka-nav-link" @click.prevent="scrollToSection('hero')">// OVERVIEW</a></li>
-          <li v-if="data.broadcast && data.broadcast.length"><a class="meka-nav-link" @click.prevent="scrollToSection('broadcast')">// BROADCAST</a></li>
-          <li v-if="data.links && data.links.length"><a class="meka-nav-link" @click.prevent="scrollToSection('directory')">// DIRECTORY</a></li>
-        </ul>
-
-        <div class="meka-nav-actions">
-          <router-link to="/admin" class="btn-amber">
-            <span>SYS ADMIN</span>
-            <span>⚡</span>
-          </router-link>
-        </div>
-      </header>
-
-      <!-- Split Hero Section: Far Left Title (Scramble Animated) & Far Right News Head Slider -->
+      <!-- Split Hero Section: Far Left Title (Scramble Animated + Easter Egg Double-Click) & Far Right News Head Slider -->
       <section id="hero" class="meka-hero-split">
-        <!-- Far Left Column with Animated Title -->
+        <!-- Far Left Column with Animated Title & Easter Egg -->
         <div class="meka-hero-left">
-          <h1 class="meka-hero-title" v-html="displayedTitle || data.profile.title || 'PALE MEKA FUTURE'"></h1>
+          <h1 
+            class="meka-hero-title" 
+            v-html="displayedTitle || data.profile.title || 'PALE MEKA FUTURE'"
+            @dblclick="goToAdmin"
+            title="Klik 2x untuk membuka Admin Studio"
+          ></h1>
           <div class="meka-underline-mark"></div>
           <p class="meka-hero-bio">
             {{ data.profile.bio || 'Precise, airy, and high-tech digital artifacts portal framed within a monolithic sky-city aesthetic.' }}
@@ -229,7 +214,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <!-- Full-Bleed Directory Showcase Section (Below Broadcast) -->
+      <!-- Full-Bleed Directory Showcase Section (Directly Below Broadcast, Zero Gap) -->
       <section 
         id="directory" 
         class="directory-showcase-container"
@@ -277,16 +262,6 @@ onUnmounted(() => {
       <p v-if="error" style="color: #ff4d6d; font-family: var(--font-mono); font-size: 11px; text-align: center; margin-bottom: 20px;">
         ERR // {{ error }}
       </p>
-
-      <!-- Footer Chrome -->
-      <footer class="meka-footer">
-        <div>
-          <span>PALE MEKA FUTURE SYSTEM // GOOGLE APPS SCRIPT & SPREADSHEET</span>
-        </div>
-        <div>
-          <router-link to="/admin">ADMIN STUDIO</router-link>
-        </div>
-      </footer>
     </div>
   </div>
 </template>

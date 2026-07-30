@@ -275,6 +275,13 @@ button, input, textarea, select {
   margin-bottom: 18px;
   letter-spacing: -0.01em;
   min-height: 1.1em;
+  cursor: pointer;
+  user-select: none;
+  transition: text-shadow 0.2s ease;
+}
+
+.meka-hero-title:hover {
+  text-shadow: 0 0 15px rgba(26, 198, 255, 0.4);
 }
 
 .scramble-char {
@@ -399,7 +406,7 @@ button, input, textarea, select {
   box-shadow: var(--glow-cyan);
   overflow: hidden;
   padding: 12px 0;
-  margin-bottom: 30px;
+  margin-bottom: 0;
   display: flex;
   position: relative;
 }
@@ -447,14 +454,14 @@ button, input, textarea, select {
   to { transform: translateX(-100%); }
 }
 
-/* Full-Bleed Directory Showcase Banner (Below Broadcast) */
+/* Full-Bleed Directory Showcase Banner (Directly Below Broadcast, Zero Gap) */
 .directory-showcase-container {
   position: relative;
   width: 100%;
   min-height: 480px;
   background: #0b1a27;
   overflow: hidden;
-  margin-bottom: 40px;
+  margin-bottom: 0;
   display: flex;
   align-items: flex-end;
   cursor: pointer;
