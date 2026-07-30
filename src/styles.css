@@ -1,22 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* MekaVerse Palette */
-  --color-void: #000000;
-  --color-bone: #ffffff;
-  --color-charcoal: #444345;
-  --color-frost: #e2e2e2;
-  --color-ash: #b8bab9;
-  --color-frost-hairline: rgba(226, 226, 226, 0.15);
+  /* Pale Meka Future Base Palette */
+  --color-sky-blue: #A5C8E1;
+  --color-light-gray-blue: #D4E5F2;
+  --color-stark-white: #FFFFFF;
 
-  /* Typography */
-  --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Typography & Structure Palette */
+  --color-navy-cyan: #1A3B56;
+  --color-medium-blue-gray: #3A5F7A;
+  --color-soft-gray-border: #BDCEDA;
 
-  /* Scale */
-  --radius-sm: 2px;
-  --radius-lg: 10px;
-  --radius-2xl: 20px;
+  /* Accent Palette */
+  --color-amber-gold: #FFC107;
+  --color-electric-cyan: #1AC6FF;
+  --color-technical-emerald: #2ECC71;
+
+  /* Fonts */
+  --font-headline: 'Orbitron', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Glow Effects */
+  --glow-cyan: 0 0 15px rgba(26, 198, 255, 0.25);
+  --glow-cyan-strong: 0 0 25px rgba(26, 198, 255, 0.45);
+  --glow-amber: 0 0 15px rgba(255, 193, 7, 0.35);
 }
 
 * {
@@ -26,10 +34,10 @@
 }
 
 body {
-  background-color: var(--color-void);
-  color: var(--color-bone);
-  font-family: var(--font-display);
-  line-height: 1.5;
+  background-color: var(--color-sky-blue);
+  color: var(--color-navy-cyan);
+  font-family: var(--font-body);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -41,12 +49,12 @@ button, input, textarea, select {
 .meka-page {
   position: relative;
   min-height: 100vh;
-  background-color: var(--color-void);
-  color: var(--color-bone);
+  background-color: var(--color-sky-blue);
+  color: var(--color-navy-cyan);
   overflow-x: hidden;
 }
 
-/* Background Canvas Artwork */
+/* Background Canvas & Atmosphere Overlay */
 .meka-bg-canvas {
   position: fixed;
   inset: 0;
@@ -54,8 +62,8 @@ button, input, textarea, select {
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
-  opacity: 0.35;
-  filter: contrast(1.05) brightness(0.85);
+  opacity: 0.55;
+  filter: contrast(1.02) brightness(1.05);
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
@@ -64,8 +72,8 @@ button, input, textarea, select {
   position: fixed;
   inset: 0;
   z-index: 1;
-  background: radial-gradient(circle at 50% 20%, transparent 20%, rgba(0, 0, 0, 0.85) 80%),
-              linear-gradient(180deg, rgba(0,0,0,0.6) 0%, #000000 95%);
+  background: radial-gradient(circle at 50% 20%, rgba(165, 200, 225, 0.25) 0%, rgba(212, 229, 242, 0.65) 70%, rgba(165, 200, 225, 0.9) 100%),
+              linear-gradient(180deg, rgba(165,200,225,0.4) 0%, rgba(212,229,242,0.85) 100%);
   pointer-events: none;
 }
 
@@ -77,7 +85,16 @@ button, input, textarea, select {
   min-height: 100vh;
 }
 
-/* Stylish Sticky Top Navigation Bar */
+/* Chamfered Edge Utility Class */
+.chamfered-card {
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+.chamfered-btn {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+/* Stylish Pale Meka Top Navigation Bar */
 .meka-navbar {
   position: sticky;
   top: 0;
@@ -85,44 +102,46 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 32px;
-  background: rgba(0, 0, 0, 0.82);
+  padding: 16px 36px;
+  background: rgba(212, 229, 242, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--color-frost-hairline);
+  border-bottom: 1px solid var(--color-soft-gray-border);
+  box-shadow: var(--glow-cyan);
 }
 
 .meka-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
-  color: var(--color-bone);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  color: var(--color-navy-cyan);
+  font-family: var(--font-headline);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .meka-brand-glyph {
-  color: var(--color-ash);
-  font-size: 14px;
+  color: var(--color-electric-cyan);
+  font-size: 16px;
 }
 
 .meka-nav-items {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 32px;
   list-style: none;
 }
 
 .meka-nav-link {
-  color: var(--color-ash);
+  color: var(--color-medium-blue-gray);
   text-decoration: none;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: -0.02em;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   padding: 6px 0;
   position: relative;
@@ -131,7 +150,7 @@ button, input, textarea, select {
 }
 
 .meka-nav-link:hover, .meka-nav-link.active {
-  color: var(--color-bone);
+  color: var(--color-navy-cyan);
 }
 
 .meka-nav-link::after {
@@ -140,8 +159,9 @@ button, input, textarea, select {
   bottom: 0;
   left: 0;
   width: 0;
-  height: 1px;
-  background-color: var(--color-frost);
+  height: 2px;
+  background-color: var(--color-electric-cyan);
+  box-shadow: 0 0 8px var(--color-electric-cyan);
   transition: width 0.25s ease;
 }
 
@@ -152,137 +172,175 @@ button, input, textarea, select {
 .meka-nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
-/* Charcoal Meka Terminal Button */
-.btn-meka {
+/* Button Variants */
+.btn-amber {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: var(--color-charcoal);
-  color: var(--color-bone);
-  border: 1px solid var(--color-frost-hairline);
-  border-radius: var(--radius-sm);
+  background-color: var(--color-amber-gold);
+  color: #0b1a27;
+  font-family: var(--font-headline);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 10px 22px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  box-shadow: var(--glow-amber);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-amber:hover {
+  background-color: #ffd24d;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.6);
+  transform: translateY(-1px);
+}
+
+.btn-cyan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: rgba(26, 198, 255, 0.12);
+  color: var(--color-navy-cyan);
+  border: 1px solid var(--color-electric-cyan);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-decoration: none;
   padding: 8px 18px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  box-shadow: var(--glow-cyan);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cyan:hover {
+  background-color: var(--color-electric-cyan);
+  color: #051622;
+  box-shadow: var(--glow-cyan-strong);
+}
+
+.btn-danger {
+  background-color: #ff4d6d;
+  color: #ffffff;
+  border: none;
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: -0.02em;
-  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+  transition: opacity 0.2s ease;
 }
 
-.btn-meka:hover {
-  background-color: #555457;
-  border-color: rgba(226, 226, 226, 0.4);
+.btn-danger:hover {
+  opacity: 0.88;
 }
 
-.btn-meka:active {
-  transform: translateY(1px);
-}
-
-.btn-meka-bone {
-  background-color: var(--color-bone);
-  color: var(--color-void);
-  border-color: var(--color-bone);
-}
-
-.btn-meka-bone:hover {
-  background-color: var(--color-frost);
-  color: var(--color-void);
-}
-
-.btn-meka-danger {
-  background-color: #3b1721;
-  color: #ff8095;
-  border-color: rgba(255, 128, 149, 0.3);
-}
-
-.btn-meka-danger:hover {
-  background-color: #521d2b;
-}
-
-/* Hero Title & Underline Mark */
+/* Hero Section */
 .meka-hero-container {
-  padding: 60px 32px 30px;
-  max-width: 900px;
+  padding: 70px 36px 40px;
+  max-width: 950px;
 }
 
 .meka-eyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-ash);
-  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-medium-blue-gray);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meka-eyebrow-status {
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-technical-emerald);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--color-technical-emerald);
 }
 
 .meka-hero-title {
-  font-family: var(--font-display);
-  font-size: clamp(40px, 7vw, 76px);
-  font-weight: 400;
-  line-height: 0.85;
-  color: var(--color-bone);
+  font-family: var(--font-headline);
+  font-size: clamp(42px, 7vw, 80px);
+  font-weight: 900;
+  line-height: 0.9;
+  color: var(--color-navy-cyan);
   text-transform: uppercase;
-  margin-bottom: 16px;
-  letter-spacing: -0.03em;
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
 }
 
 .meka-underline-mark {
-  width: 40%;
-  max-width: 280px;
-  height: 1px;
-  background-color: var(--color-frost);
-  margin-bottom: 20px;
+  width: 45%;
+  max-width: 320px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-electric-cyan) 0%, var(--color-amber-gold) 100%);
+  box-shadow: var(--glow-cyan);
+  margin-bottom: 24px;
 }
 
 .meka-hero-bio {
-  font-family: var(--font-display);
-  font-size: 16px;
-  color: var(--color-ash);
-  max-width: 580px;
-  margin-bottom: 28px;
+  font-family: var(--font-body);
+  font-size: 17px;
+  color: var(--color-medium-blue-gray);
+  max-width: 620px;
+  margin-bottom: 32px;
+  font-weight: 500;
 }
 
-/* Sleek Monochrome News Ticker */
+/* Ticker Section */
 .meka-ticker-section {
   width: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  border-top: 1px solid var(--color-frost-hairline);
-  border-bottom: 1px solid var(--color-frost-hairline);
+  background: rgba(212, 229, 242, 0.75);
+  border-top: 1px solid var(--color-soft-gray-border);
+  border-bottom: 1px solid var(--color-soft-gray-border);
+  box-shadow: var(--glow-cyan);
   overflow: hidden;
-  padding: 10px 0;
-  margin-bottom: 40px;
+  padding: 12px 0;
+  margin-bottom: 44px;
 }
 
 .meka-ticker-track {
   display: flex;
   width: max-content;
-  gap: 50px;
-  animation: meka-scroll 30s linear infinite;
+  gap: 60px;
+  animation: meka-scroll 32s linear infinite;
 }
 
 .meka-ticker-item {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-bone);
-  letter-spacing: -0.02em;
+  font-size: 12px;
+  color: var(--color-navy-cyan);
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .meka-ticker-tag {
-  background: var(--color-charcoal);
-  color: var(--color-bone);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  font-size: 9px;
+  background: var(--color-navy-cyan);
+  color: var(--color-stark-white);
+  padding: 3px 8px;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
 }
 
 @keyframes meka-scroll {
@@ -290,121 +348,122 @@ button, input, textarea, select {
   100% { transform: translateX(-50%); }
 }
 
-/* Links & Grid Sections */
+/* Directory Links & Cards */
 .meka-section-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-ash);
+  gap: 14px;
+  font-family: var(--font-headline);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-navy-cyan);
   text-transform: uppercase;
-  margin-bottom: 18px;
+  letter-spacing: 0.05em;
+  margin-bottom: 22px;
 }
 
 .meka-section-title::after {
   content: '';
   flex: 1;
   height: 1px;
-  background-color: var(--color-frost-hairline);
+  background-color: var(--color-soft-gray-border);
 }
 
 .meka-cards-container {
-  max-width: 900px;
-  padding: 0 32px 60px;
+  max-width: 950px;
+  padding: 0 36px 70px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 36px;
 }
 
 .meka-links-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
 }
 
 .meka-link-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px;
-  background: rgba(18, 18, 18, 0.7);
-  border: 1px solid var(--color-frost-hairline);
-  border-radius: var(--radius-lg);
-  color: var(--color-bone);
+  gap: 18px;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.90);
+  border: 1px solid var(--color-soft-gray-border);
+  box-shadow: var(--glow-cyan);
+  color: var(--color-navy-cyan);
   text-decoration: none;
-  backdrop-filter: blur(8px);
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  transition: all 0.2s ease;
 }
 
 .meka-link-card:hover {
-  background: var(--color-charcoal);
-  border-color: rgba(226, 226, 226, 0.4);
+  background: var(--color-stark-white);
+  border-color: var(--color-electric-cyan);
+  box-shadow: var(--glow-cyan-strong);
   transform: translateY(-2px);
 }
 
 .meka-link-icon {
-  font-size: 20px;
+  font-size: 22px;
+  color: var(--color-electric-cyan);
 }
 
 .meka-link-label {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-family: var(--font-headline);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 /* Footer Chrome */
 .meka-footer {
   margin-top: auto;
-  padding: 24px 32px;
-  border-top: 1px solid var(--color-frost-hairline);
+  padding: 28px 36px;
+  background: rgba(212, 229, 242, 0.65);
+  border-top: 1px solid var(--color-soft-gray-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-ash);
+  font-size: 11px;
+  color: var(--color-medium-blue-gray);
 }
 
 .meka-footer a {
-  color: var(--color-bone);
+  color: var(--color-navy-cyan);
+  font-weight: 600;
   text-decoration: none;
 }
 
 .meka-footer a:hover {
+  color: var(--color-electric-cyan);
   text-decoration: underline;
 }
 
-/* Admin Studio Styles */
+/* Admin Studio Panels */
 .admin-container {
-  max-width: 1050px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 40px 24px;
-}
-
-.admin-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 24px;
-  margin-bottom: 32px;
-  border-bottom: 1px solid var(--color-frost-hairline);
+  padding: 44px 28px;
 }
 
 .admin-card {
-  background: rgba(18, 18, 18, 0.85);
-  border: 1px solid var(--color-frost-hairline);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  margin-bottom: 24px;
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-soft-gray-border);
+  box-shadow: var(--glow-cyan);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  padding: 28px;
+  margin-bottom: 28px;
+  backdrop-filter: blur(14px);
 }
 
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 28px;
 }
 
 .admin-grid-full {
@@ -415,66 +474,68 @@ button, input, textarea, select {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .admin-field label {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--color-ash);
+  font-weight: 600;
+  color: var(--color-navy-cyan);
   text-transform: uppercase;
 }
 
 .admin-input, .admin-textarea {
-  background: #090909;
-  border: 1px solid var(--color-frost-hairline);
-  border-radius: var(--radius-sm);
-  color: var(--color-bone);
-  padding: 10px 14px;
+  background: var(--color-light-gray-blue);
+  border: 1px solid var(--color-soft-gray-border);
+  color: var(--color-navy-cyan);
+  padding: 12px 16px;
   font-size: 13px;
-  transition: border-color 0.2s ease;
+  font-family: var(--font-body);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .admin-input:focus, .admin-textarea:focus {
   outline: none;
-  border-color: var(--color-frost);
+  border-color: var(--color-electric-cyan);
+  box-shadow: var(--glow-cyan);
 }
 
 .upload-box {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #090909;
-  border: 1px dashed var(--color-frost-hairline);
-  border-radius: var(--radius-sm);
+  gap: 14px;
+  padding: 14px;
+  background: var(--color-light-gray-blue);
+  border: 1px dashed var(--color-soft-gray-border);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
 }
 
 .upload-preview {
-  width: 60px;
-  height: 40px;
+  width: 70px;
+  height: 45px;
   object-fit: cover;
-  border-radius: 2px;
-  border: 1px solid var(--color-frost-hairline);
+  border: 1px solid var(--color-soft-gray-border);
 }
 
 @media (max-width: 768px) {
   .meka-navbar {
-    padding: 12px 16px;
+    padding: 14px 20px;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 14px;
   }
   .meka-nav-items {
-    gap: 14px;
+    gap: 16px;
     order: 3;
     width: 100%;
     overflow-x: auto;
   }
   .meka-hero-container {
-    padding: 40px 20px 20px;
+    padding: 44px 20px 24px;
   }
   .meka-cards-container {
-    padding: 0 20px 40px;
+    padding: 0 20px 50px;
   }
   .admin-grid {
     grid-template-columns: 1fr;
