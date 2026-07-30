@@ -52,9 +52,10 @@ extraFiles.forEach(f => {
   if (fs.existsSync(f)) fs.unlinkSync(f)
 })
 
-const output = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>${googleFonts}<style>${css}</style>${debugScript}</head><body><div id="app">${fallbackShell}</div><script>
-${jsFormatted}
-</script></body></html>`
+const head = '<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>' + googleFonts + '<style>' + css + '</style>' + debugScript + '</head><body><div id="app">' + fallbackShell + '</div><script>\n'
+const foot = '\n</script></body></html>'
+
+const output = head + jsFormatted + foot
 
 fs.writeFileSync('gas/index.html', output)
-console.log(`gas/index.html generated with formatted JS bundle (${output.length} bytes).`)
+console.log(`gas/index.html generated with verbatim JS bundle (${output.length} bytes).`)
