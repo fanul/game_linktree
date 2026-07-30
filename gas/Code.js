@@ -1,6 +1,9 @@
 const DEFAULT_SUPER_ADMIN_EMAIL = 'fanul.doang@gmail.com';
 const DEFAULT_DRIVE_FOLDER_ID = '1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR';
+const DEFAULT_NEWS_HEAD_FOLDER_ID = '1E_Fm9Nq4lwHgwTGAIilVvije0RkHndgs';
+const DEFAULT_DIRECTORY_FOLDER_ID = '1h4xQ-uxN7f7rZJKJiq0yH_Xjz4WOfctR';
 const MAX_RPC_BYTES = 10000000;
+
 const FULL_PROXY_RPC_HANDLERS = {
   getPublicData: getPublicData,
   getAuthConfig: getAuthConfig,
@@ -14,7 +17,7 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.__full_proxy_html === '1') {
     return jsonResponse_({ ok: true, html: HtmlService.createHtmlOutputFromFile('index').getContent() });
   }
-  return HtmlService.createHtmlOutputFromFile('index').setTitle('Game Linktree');
+  return HtmlService.createHtmlOutputFromFile('index').setTitle('Pale Meka Future Portal');
 }
 
 function doPost(e) {
@@ -37,13 +40,26 @@ function doPost(e) {
 function getPublicData() {
   const data = readData_();
   const settings = data.settings || defaultData_().settings;
-  const themes = Array.isArray(settings.themes) && settings.themes.length ? settings.themes : ['neon'];
+  const themes = Array.isArray(settings.themes) && settings.themes.length ? settings.themes : ['pale-meka'];
   const days = Math.max(1, Number(settings.themeDays) || 3);
   const themeName = themes[Math.floor(Date.now() / 86400000 / days) % themes.length];
+  
+  const activeNewsHead = (data.newsHead || [])
+    .filter(function (item) { return item.active !== false; })
+    .slice(0, Math.max(1, Number(settings.maxNewsHead) || 5));
+
+  const activeBroadcast = (data.broadcast || data.news || [])
+    .filter(function (item) { return item.active !== false; });
+
+  const activeLinks = (data.links || [])
+    .filter(function (item) { return item.active !== false; });
+
   return {
-    profile: data.profile || {},
-    news: (data.news || []).filter(function (item) { return item.active; }),
-    links: (data.links || []).filter(function (item) { return item.active; }),
+    profile: data.profile || defaultData_().profile,
+    newsHead: activeNewsHead,
+    broadcast: activeBroadcast,
+    links: activeLinks,
+    settings: settings,
     theme: theme_(themeName)
   };
 }
@@ -72,19 +88,17 @@ function saveAdminData(idToken, input) {
   const admin = assertAdmin_(idToken);
   const data = validateData_(input);
   const settings = data.settings;
-  const folderId = settings.driveFolderId || DEFAULT_DRIVE_FOLDER_ID;
-  if (folderId) {
+  
+  scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
+  
+  if (settings.spreadsheetId) {
     try {
-      const folder = DriveApp.getFolderById(folderId);
-      const files = folder.getFilesByName('game-linktree-news.xml');
-      const xml = newsXml_(data.news);
-      if (files.hasNext()) files.next().setContent(xml); else folder.createFile('game-linktree-news.xml', xml, MimeType.XML);
+      syncSpreadsheet_(settings.spreadsheetId, data, admin.email);
     } catch (err) {
-      console.warn('Drive XML sync warning:', err);
+      console.warn('Spreadsheet sync error:', err);
     }
   }
-  scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
-  if (settings.spreadsheetId) appendAudit_(settings.spreadsheetId, 'saveAdminData', admin.email);
+
   return { saved: true, savedAt: new Date().toISOString() };
 }
 
@@ -92,20 +106,30 @@ function uploadFileToDrive(idToken, filePayload) {
   const admin = assertAdmin_(idToken);
   if (!filePayload || !filePayload.base64) throw new Error('Data file tidak valid.');
   const data = readData_();
-  const folderId = (filePayload.folderId) || (data.settings && data.settings.driveFolderId) || DEFAULT_DRIVE_FOLDER_ID;
+  const settings = data.settings || defaultData_().settings;
+  
+  let folderId = filePayload.folderId;
+  if (!folderId) {
+    if (filePayload.targetType === 'newsHead') folderId = settings.newsHeadFolderId || DEFAULT_NEWS_HEAD_FOLDER_ID;
+    else if (filePayload.targetType === 'directory') folderId = settings.directoryFolderId || DEFAULT_DIRECTORY_FOLDER_ID;
+    else folderId = settings.driveFolderId || DEFAULT_DRIVE_FOLDER_ID;
+  }
+
   const folder = DriveApp.getFolderById(folderId);
-  const fileName = filePayload.name || ('bg_' + Date.now() + '.png');
+  const fileName = filePayload.name || ('file_' + Date.now() + '.png');
   const contentType = filePayload.mimeType || 'image/png';
   const decoded = Utilities.base64Decode(filePayload.base64);
   const blob = Utilities.newBlob(decoded, contentType, fileName);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+  
   if (filePayload.targetField === 'bgUrl') {
     data.profile = data.profile || {};
     data.profile.bgUrl = url;
     scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
   }
+  
   return { success: true, fileId: file.getId(), url: url };
 }
 
@@ -148,10 +172,54 @@ function validateData_(input) {
     avatarUrl: url_(input.profile && input.profile.avatarUrl),
     bgUrl: url_(input.profile && input.profile.bgUrl)
   };
-  clean.news = array_(input.news, 50).map(function (x) { return { id: id_(x.id), title: text_(x.title, 150), body: html_(x.body, 5000), imageUrl: url_(x.imageUrl), active: x.active === true }; });
-  clean.links = array_(input.links, 100).map(function (x) { return { id: id_(x.id), label: text_(x.label, 100), url: url_(x.url, true), icon: text_(x.icon, 8), active: x.active === true }; });
+  
+  clean.newsHead = array_(input.newsHead, 20).map(function (x) {
+    return {
+      id: id_(x.id),
+      title: text_(x.title, 150),
+      subtitle: text_(x.subtitle, 300),
+      imageUrl: url_(x.imageUrl),
+      linkUrl: url_(x.linkUrl),
+      active: x.active === true
+    };
+  });
+
+  const rawBroadcast = input.broadcast || input.news;
+  clean.broadcast = array_(rawBroadcast, 50).map(function (x) {
+    return {
+      id: id_(x.id),
+      title: text_(x.title, 150),
+      body: html_(x.body, 5000),
+      imageUrl: url_(x.imageUrl),
+      active: x.active === true
+    };
+  });
+  // Maintain backward compatibility with news field
+  clean.news = clean.broadcast;
+
+  clean.links = array_(input.links, 100).map(function (x) {
+    return {
+      id: id_(x.id),
+      label: text_(x.label, 100),
+      url: url_(x.url, true),
+      icon: text_(x.icon, 8),
+      imageUrl: url_(x.imageUrl),
+      active: x.active === true
+    };
+  });
+
   const s = input.settings || {};
-  clean.settings = { driveFolderId: id_(s.driveFolderId || DEFAULT_DRIVE_FOLDER_ID, true), spreadsheetId: id_(s.spreadsheetId, true), themeDays: Math.min(365, Math.max(1, Number(s.themeDays) || 3)), themes: array_(s.themes, 20).map(function (x) { return text_(x, 30).toLowerCase(); }).filter(Boolean) };
+  clean.settings = {
+    driveFolderId: id_(s.driveFolderId || DEFAULT_DRIVE_FOLDER_ID, true),
+    newsHeadFolderId: id_(s.newsHeadFolderId || DEFAULT_NEWS_HEAD_FOLDER_ID, true),
+    directoryFolderId: id_(s.directoryFolderId || DEFAULT_DIRECTORY_FOLDER_ID, true),
+    spreadsheetId: id_(s.spreadsheetId, true),
+    newsHeadInterval: Math.min(60, Math.max(1, Number(s.newsHeadInterval) || 5)),
+    maxNewsHead: Math.min(20, Math.max(1, Number(s.maxNewsHead) || 5)),
+    themeDays: Math.min(365, Math.max(1, Number(s.themeDays) || 3)),
+    themes: array_(s.themes, 20).map(function (x) { return text_(x, 30).toLowerCase(); }).filter(Boolean)
+  };
+  
   return clean;
 }
 
@@ -168,21 +236,88 @@ function defaultData_() {
       avatarUrl: '',
       bgUrl: ''
     },
-    news: [{ id: 'welcome', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', imageUrl: '', active: true }],
+    newsHead: [
+      {
+        id: 'nh-1',
+        title: 'MONOLITHIC SKY-CITY',
+        subtitle: 'High-tech architectural portal system initialized.',
+        imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
+        linkUrl: 'https://github.com/fanul',
+        active: true
+      }
+    ],
+    broadcast: [
+      { id: 'b-1', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', imageUrl: '', active: true }
+    ],
+    news: [
+      { id: 'b-1', title: 'SYSTEM ONLINE', body: 'Welcome to Pale Meka Future game portal.', imageUrl: '', active: true }
+    ],
     links: [],
-    settings: { driveFolderId: DEFAULT_DRIVE_FOLDER_ID, spreadsheetId: '', themeDays: 3, themes: ['pale-meka', 'sky-city'] }
+    settings: {
+      driveFolderId: DEFAULT_DRIVE_FOLDER_ID,
+      newsHeadFolderId: DEFAULT_NEWS_HEAD_FOLDER_ID,
+      directoryFolderId: DEFAULT_DIRECTORY_FOLDER_ID,
+      spreadsheetId: '',
+      newsHeadInterval: 5,
+      maxNewsHead: 5,
+      themeDays: 3,
+      themes: ['pale-meka', 'sky-city']
+    }
   };
 }
 
 function theme_(name) {
-  const themes = { neon: { '--bg': '#070917', '--glow': '#392b85' }, fantasy: { '--bg': '#120d08', '--glow': '#6a3617' }, space: { '--bg': '#020b19', '--glow': '#0b5780' } };
-  return { name: name, variables: themes[name] || themes.neon };
+  const themes = { 'pale-meka': { '--glow': '#1AC6FF' }, 'sky-city': { '--glow': '#FFC107' } };
+  return { name: name, variables: themes[name] || themes['pale-meka'] };
 }
 
-function newsXml_(news) {
-  const doc = XmlService.createDocument(XmlService.createElement('news'));
-  (news || []).forEach(function (item) { const node = XmlService.createElement('item').setAttribute('id', item.id).setAttribute('active', String(item.active)); node.addContent(XmlService.createElement('title').setText(item.title)); node.addContent(XmlService.createElement('body').setText(item.body)); node.addContent(XmlService.createElement('imageUrl').setText(item.imageUrl)); doc.getRootElement().addContent(node); });
-  return XmlService.getPrettyFormat().format(doc);
+function syncSpreadsheet_(spreadsheetId, data, adminEmail) {
+  const book = SpreadsheetApp.openById(spreadsheetId);
+  
+  // Profile Sheet
+  const profileSheet = book.getSheetByName('Profile') || book.insertSheet('Profile');
+  profileSheet.clear();
+  profileSheet.appendRow(['Title', 'Bio', 'AvatarUrl', 'BgUrl', 'LastUpdated']);
+  profileSheet.appendRow([data.profile.title, data.profile.bio, data.profile.avatarUrl, data.profile.bgUrl, new Date().toISOString()]);
+
+  // NewsHead Sheet
+  const nhSheet = book.getSheetByName('NewsHead') || book.insertSheet('NewsHead');
+  nhSheet.clear();
+  nhSheet.appendRow(['ID', 'Title', 'Subtitle', 'ImageUrl', 'LinkUrl', 'Active']);
+  (data.newsHead || []).forEach(function (x) {
+    nhSheet.appendRow([x.id, x.title, x.subtitle, x.imageUrl, x.linkUrl, String(x.active)]);
+  });
+
+  // Broadcast Sheet
+  const bcSheet = book.getSheetByName('Broadcast') || book.insertSheet('Broadcast');
+  bcSheet.clear();
+  bcSheet.appendRow(['ID', 'Title', 'Body', 'Active']);
+  (data.broadcast || []).forEach(function (x) {
+    bcSheet.appendRow([x.id, x.title, x.body, String(x.active)]);
+  });
+
+  // Directory Sheet
+  const dirSheet = book.getSheetByName('Directory') || book.insertSheet('Directory');
+  dirSheet.clear();
+  dirSheet.appendRow(['ID', 'Label', 'URL', 'Icon', 'ImageUrl', 'Active']);
+  (data.links || []).forEach(function (x) {
+    dirSheet.appendRow([x.id, x.label, x.url, x.icon, x.imageUrl, String(x.active)]);
+  });
+
+  // Settings Sheet
+  const setSheet = book.getSheetByName('Settings') || book.insertSheet('Settings');
+  setSheet.clear();
+  setSheet.appendRow(['DriveFolderId', 'NewsHeadFolderId', 'DirectoryFolderId', 'NewsHeadIntervalSec', 'MaxNewsHead']);
+  setSheet.appendRow([
+    data.settings.driveFolderId,
+    data.settings.newsHeadFolderId,
+    data.settings.directoryFolderId,
+    data.settings.newsHeadInterval,
+    data.settings.maxNewsHead
+  ]);
+
+  // Audit Log Sheet
+  appendAudit_(spreadsheetId, 'syncSpreadsheet', adminEmail);
 }
 
 function appendAudit_(spreadsheetId, action, email) {
