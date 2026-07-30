@@ -9,6 +9,15 @@ const jsRaw = fs.readFileSync(path.join('dist', jsPath), 'utf8')
 // Critical: Escape ALL </ and <!-- in JS bundle so HTML parser never halts script execution inside inline <script>
 const jsSafe = jsRaw.replaceAll('</', '<\\/').replaceAll('<!--', '<\\!--')
 
+// Google Apps Script HtmlService limit: HTML files must be < 100 KB.
+// Split jsSafe into 2 chunks (~55 KB each) to guarantee native Apps Script template evaluation
+const mid = Math.floor(jsSafe.length / 2)
+let splitIdx = jsSafe.lastIndexOf(';', mid)
+if (splitIdx === -1 || splitIdx < mid - 10000) splitIdx = mid
+
+const chunk1 = jsSafe.slice(0, splitIdx + 1)
+const chunk2 = jsSafe.slice(splitIdx + 1)
+
 const css = fs.readFileSync(path.join('dist', cssPath), 'utf8')
 
 const googleFonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">'
@@ -45,13 +54,19 @@ const debugScript = `<script>
 
 const fallbackShell = `<div class="meka-page"><div class="meka-content"><section class="meka-hero-split"><div class="meka-hero-left"><h1 class="meka-hero-title">PALE MEKA FUTURE</h1><div class="meka-underline-mark"></div><p class="meka-hero-bio">Precise, airy, and high-tech digital artifacts portal framed within a monolithic sky-city aesthetic.</p><p style="font-family:var(--font-mono);font-size:12px;color:var(--color-navy-cyan);margin-top:24px;">❖ INITIALIZING SYSTEM MODULES...</p></div></section></div></div>`
 
-// Write modular files for native GAS template includes
+// Clean up old single javascript.html if present
+if (fs.existsSync('gas/javascript.html')) {
+  fs.unlinkSync('gas/javascript.html')
+}
+
+// Write modular files (< 100 KB each) for native GAS template includes
 fs.writeFileSync('gas/css.html', `<style>${css}</style>`)
 fs.writeFileSync('gas/debug.html', debugScript)
 fs.writeFileSync('gas/fallback.html', fallbackShell)
-fs.writeFileSync('gas/javascript.html', `<script>${jsSafe}</script>`)
+fs.writeFileSync('gas/js1.html', `<script>${chunk1}`)
+fs.writeFileSync('gas/js2.html', `${chunk2}</script>`)
 
-const indexHtml = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>${googleFonts}<?!= include('css'); ?><?!= include('debug'); ?></head><body><div id="app"><?!= include('fallback'); ?></div><?!= include('javascript'); ?></body></html>`
+const indexHtml = `<!doctype html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pale Meka Future</title>${googleFonts}<?!= include('css'); ?><?!= include('debug'); ?></head><body><div id="app"><?!= include('fallback'); ?></div><?!= include('js1'); ?><?!= include('js2'); ?></body></html>`
 fs.writeFileSync('gas/index.html', indexHtml)
 
-console.log(`gas/index.html generated with modular GAS include templates.`)
+console.log(`gas/index.html generated with chunked JS templates (js1: ${chunk1.length}B, js2: ${chunk2.length}B).`)
