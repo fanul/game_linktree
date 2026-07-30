@@ -116,7 +116,7 @@ async function handleFileUpload(event, item, fieldName, folderId) {
 
 function addItem() {
   state.items.unshift({
-    id: crypto.randomUUID(),
+    id: 'item-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9),
     label: 'Item Baru',
     subtitle: 'Deskripsi item...',
     url: 'https://',
@@ -136,7 +136,7 @@ function deleteItem(item) {
 
 function addBroadcast() {
   state.broadcast.push({
-    id: crypto.randomUUID(),
+    id: 'item-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9),
     title: 'Pesan Broadcast',
     body: 'Tulis isi pengumuman...',
     imageUrl: '',
