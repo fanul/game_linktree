@@ -13,10 +13,13 @@ const FULL_PROXY_RPC_HANDLERS = {
 };
 
 function doGet(e) {
+  const html = HtmlService.createHtmlOutputFromFile('index')
+    .setTitle('Pale Meka Future Portal')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   if (e && e.parameter && e.parameter.__full_proxy_html === '1') {
-    return jsonResponse_({ ok: true, html: HtmlService.createHtmlOutputFromFile('index').getContent() });
+    return jsonResponse_({ ok: true, html: html.getContent() });
   }
-  return HtmlService.createHtmlOutputFromFile('index').setTitle('Pale Meka Future Portal');
+  return html;
 }
 
 function doPost(e) {
@@ -25,10 +28,10 @@ function doPost(e) {
     if (raw.length > MAX_RPC_BYTES) throw new Error('Payload terlalu besar.');
     rateLimit_();
     const request = JSON.parse(raw);
-    if (!request || typeof request.functionName !== 'string') throw new Error('Request RPC tidak valid.');
+    if (!request || typeof request.functionName !== 'string' || !request.functionName.trim() || !Array.isArray(request.args)) throw new Error('Request RPC tidak valid.');
+    if (!Object.prototype.hasOwnProperty.call(FULL_PROXY_RPC_HANDLERS, request.functionName)) throw new Error('RPC function is not allowed.');
     const handler = FULL_PROXY_RPC_HANDLERS[request.functionName];
-    if (!handler) throw new Error('RPC function is not allowed.');
-    const args = Array.isArray(request.args) ? request.args : [];
+    const args = request.args;
     return jsonResponse_({ ok: true, result: serializable_(handler.apply(null, args)) });
   } catch (error) {
     console.error(error && error.stack ? error.stack : error);

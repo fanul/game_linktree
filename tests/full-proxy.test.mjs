@@ -11,7 +11,7 @@ function loadGas(source = gas) {
   const outputs = []
   const sandbox = {
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput(text) { const out = { text, setMimeType() { return out } }; outputs.push(out); return out } },
-    HtmlService: { createHtmlOutputFromFile() { return { getContent: () => '<!doctype html><div id="app"></div>', setTitle() { return this } } } },
+    HtmlService: { XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' }, createHtmlOutputFromFile() { return { getContent: () => '<!doctype html><div id="app"></div>', setTitle() { return this }, setXFrameOptionsMode() { return this } } } },
     Utilities: { getUuid: () => 'uuid' },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty() {} }) },
     Session: { getActiveUser: () => ({ getEmail: () => 'fanul.doang@gmail.com' }) },
@@ -27,12 +27,25 @@ function post(ctx, functionName, args = []) {
   return JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify({ functionName, args }) } }).text)
 }
 
-test('raw HTML endpoint returns application bundle', () => {
-  const response = loadGas().doGet({ parameter: { __full_proxy_html: '1' } })
-  const body = JSON.parse(response.text)
-  assert.equal(body.ok, true)
-  assert.match(body.html, /<!doctype html>/i)
+test('native doGet returns HTML and full-proxy returns JSON', () => {
+  const ctx = loadGas()
+  const native = ctx.doGet({ parameter: {} })
+  assert.match(native.getContent(), /id="app"/)
+  const result = JSON.parse(ctx.doGet({ parameter: { __full_proxy_html: '1' } }).text)
+  assert.equal(result.ok, true)
+  assert.match(result.html, /id="app"/)
 })
+
+test('RPC rejects blank function names and non-array args', () => {
+  const ctx = loadGas()
+  for (const request of [{ functionName: ' ', args: [] }, { functionName: 'getPublicData', args: {} }]) {
+    const result = JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(request) } }).text)
+    assert.equal(result.ok, false)
+    assert.equal(result.error, 'Request RPC tidak valid.')
+  }
+})
+
+
 
 test('allowlisted function succeeds and arguments are unchanged', () => {
   const ctx = loadGas()
