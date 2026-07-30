@@ -1,19 +1,112 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { rpc } from '../services/rpc.js'
+
 const data = ref({ profile: {}, news: [], links: [], theme: {} })
 const error = ref('')
-onMounted(async () => { try { data.value = await rpc('getPublicData') } catch (e) { error.value = e.message } })
+
+function scrollToSection(id) {
+  const el = document.getElementById(id)
+  if (el) el.scrollIntoView({ behavior: 'smooth' })
+}
+
+onMounted(async () => {
+  try {
+    data.value = await rpc('getPublicData')
+  } catch (e) {
+    error.value = e.message
+  }
+})
 </script>
+
 <template>
-  <main class="page" :style="data.theme.variables">
-    <section v-if="data.news.length" class="ticker"><div class="ticker-track"><span v-for="item in data.news" :key="item.id">🎮 {{ item.title }} — {{ item.body }}</span></div></section>
-    <section class="profile card">
-      <img v-if="data.profile.avatarUrl" :src="data.profile.avatarUrl" alt="Avatar profil">
-      <h1>{{ data.profile.title || 'Game Portal' }}</h1><p>{{ data.profile.bio || 'Semua tautan game favorit dalam satu tempat.' }}</p>
-    </section>
-    <nav class="links" aria-label="Tautan game"><a v-for="link in data.links" :key="link.id" :href="link.url" target="_blank" rel="noopener"><span>{{ link.icon || '⚔️' }}</span>{{ link.label }}</a></nav>
-    <p v-if="error" class="error">{{ error }}</p>
-    <router-link class="admin-link" to="/admin">Admin</router-link>
-  </main>
+  <div class="meka-page">
+    <!-- Background Canvas & Artwork Layer -->
+    <div 
+      class="meka-bg-canvas" 
+      :style="{ backgroundImage: `url(${data.profile.bgUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1920&auto=format&fit=crop'})` }"
+    ></div>
+    <div class="meka-bg-overlay"></div>
+
+    <div class="meka-content">
+      <!-- Stylish Sticky Navigation Bar -->
+      <header class="meka-navbar">
+        <a href="#" class="meka-brand">
+          <span class="meka-brand-glyph">◇</span>
+          <span>{{ data.profile.title || 'MEKAVERSE' }}</span>
+        </a>
+
+        <ul class="meka-nav-items">
+          <li><a class="meka-nav-link" @click.prevent="scrollToSection('hero')">// OVERVIEW</a></li>
+          <li v-if="data.news.length"><a class="meka-nav-link" @click.prevent="scrollToSection('news')">// NEWS</a></li>
+          <li v-if="data.links.length"><a class="meka-nav-link" @click.prevent="scrollToSection('links')">// DIRECTORY</a></li>
+        </ul>
+
+        <div class="meka-nav-actions">
+          <router-link to="/admin" class="btn-meka">
+            <span>SYS ADMIN</span>
+            <span>→</span>
+          </router-link>
+        </div>
+      </header>
+
+      <!-- Hero Title Section -->
+      <section id="hero" class="meka-hero-container">
+        <p class="meka-eyebrow">01 // DIGITAL ARTIFACTS GALLERY</p>
+        <h1 class="meka-hero-title">{{ data.profile.title || 'MEKAVERSE PORTAL' }}</h1>
+        <div class="meka-underline-mark"></div>
+        <p class="meka-hero-bio">{{ data.profile.bio || 'Monochrome gallery for digital artifacts — a pure void where the rendered world hangs like a museum piece.' }}</p>
+      </section>
+
+      <!-- Sleek Monochrome News Ticker -->
+      <section id="news" v-if="data.news.length" class="meka-ticker-section">
+        <div class="meka-ticker-track">
+          <div v-for="item in data.news" :key="item.id" class="meka-ticker-item">
+            <span class="meka-ticker-tag">SYS UPDATE</span>
+            <span>{{ item.title }} — {{ item.body }}</span>
+          </div>
+          <!-- Repeat for infinite scroll loop -->
+          <div v-for="item in data.news" :key="'dup-' + item.id" class="meka-ticker-item">
+            <span class="meka-ticker-tag">SYS UPDATE</span>
+            <span>{{ item.title }} — {{ item.body }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Directory & Links Section -->
+      <main id="links" class="meka-cards-container">
+        <div class="meka-section-title">
+          <span>02 // PORTAL DIRECTORY</span>
+        </div>
+
+        <div class="meka-links-grid">
+          <a 
+            v-for="link in data.links" 
+            :key="link.id" 
+            :href="link.url" 
+            target="_blank" 
+            rel="noopener"
+            class="meka-link-card"
+          >
+            <span class="meka-link-icon">{{ link.icon || '❖' }}</span>
+            <span class="meka-link-label">{{ link.label }}</span>
+          </a>
+        </div>
+
+        <p v-if="error" class="error-msg" style="color: #ff8095; font-family: var(--font-mono); font-size: 11px;">
+          ERR // {{ error }}
+        </p>
+      </main>
+
+      <!-- Footer Chrome -->
+      <footer class="meka-footer">
+        <div>
+          <span>MEKAVERSE SYSTEM v2.0 // GOOGLE APPS SCRIPT</span>
+        </div>
+        <div>
+          <router-link to="/admin">ADMIN ACCESS</router-link>
+        </div>
+      </footer>
+    </div>
+  </div>
 </template>

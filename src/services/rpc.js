@@ -5,4 +5,18 @@ export function rpc(functionName, ...args) {
   })
 }
 
-export const adminArgs = (...args) => [sessionStorage.getItem('adminKey') || '', ...args]
+export const adminArgs = (...args) => [sessionStorage.getItem('googleIdToken') || sessionStorage.getItem('adminKey') || '', ...args]
+
+export function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => {
+      const result = String(reader.result || '')
+      const base64 = result.slice(result.indexOf(',') + 1)
+      resolve(base64)
+    }
+    reader.onerror = error => reject(error)
+  })
+}
+

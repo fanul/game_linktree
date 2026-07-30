@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/build-gas.mjs",
+    "build": "vite build && node scripts/build-gas.mjs && node scripts/sync-deploy.mjs",
+    "deploy": "npm run build",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {

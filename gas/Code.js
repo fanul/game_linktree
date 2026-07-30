@@ -1,9 +1,13 @@
-const ADMIN_EMAIL = 'fanul.doang@gmail.com';
-const MAX_RPC_BYTES = 100000;
+const DEFAULT_SUPER_ADMIN_EMAIL = 'fanul.doang@gmail.com';
+const DEFAULT_DRIVE_FOLDER_ID = '1LNmKXbmfF8Y8L7rBBjWUlBunju9qMflR';
+const MAX_RPC_BYTES = 10000000;
 const FULL_PROXY_RPC_HANDLERS = {
   getPublicData: getPublicData,
+  getAuthConfig: getAuthConfig,
+  getViewer: getViewer,
   getAdminData: getAdminData,
-  saveAdminData: saveAdminData
+  saveAdminData: saveAdminData,
+  uploadFileToDrive: uploadFileToDrive
 };
 
 function doGet(e) {
@@ -44,29 +48,92 @@ function getPublicData() {
   };
 }
 
-function getAdminData(adminKey) {
-  assertAdmin_(adminKey);
+function getAuthConfig() {
+  const props = scriptProperties_();
+  return { googleClientId: props.getProperty('GOOGLE_CLIENT_ID') || '' };
+}
+
+function getViewer(idToken) {
+  if (!idToken) return { authenticated: false, isAdmin: false };
+  try {
+    const identity = verifyGoogleIdToken_(idToken);
+    return { authenticated: true, isAdmin: identity.email === superAdminEmail_(), email: identity.email };
+  } catch (error) {
+    return { authenticated: false, isAdmin: false };
+  }
+}
+
+function getAdminData(idToken) {
+  assertAdmin_(idToken);
   return readData_();
 }
 
-function saveAdminData(adminKey, input) {
-  assertAdmin_(adminKey);
+function saveAdminData(idToken, input) {
+  const admin = assertAdmin_(idToken);
   const data = validateData_(input);
   const settings = data.settings;
-  if (settings.driveFolderId) {
-    const folder = DriveApp.getFolderById(settings.driveFolderId);
-    const files = folder.getFilesByName('game-linktree-news.xml');
-    const xml = newsXml_(data.news);
-    if (files.hasNext()) files.next().setContent(xml); else folder.createFile('game-linktree-news.xml', xml, MimeType.XML);
+  const folderId = settings.driveFolderId || DEFAULT_DRIVE_FOLDER_ID;
+  if (folderId) {
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      const files = folder.getFilesByName('game-linktree-news.xml');
+      const xml = newsXml_(data.news);
+      if (files.hasNext()) files.next().setContent(xml); else folder.createFile('game-linktree-news.xml', xml, MimeType.XML);
+    } catch (err) {
+      console.warn('Drive XML sync warning:', err);
+    }
   }
-  PropertiesService.getScriptProperties().setProperty('APP_DATA', JSON.stringify(data));
-  if (settings.spreadsheetId) appendAudit_(settings.spreadsheetId, 'saveAdminData');
+  scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
+  if (settings.spreadsheetId) appendAudit_(settings.spreadsheetId, 'saveAdminData', admin.email);
   return { saved: true, savedAt: new Date().toISOString() };
 }
 
-function assertAdmin_(key) {
-  const expected = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
-  if (!expected || typeof key !== 'string' || key.length < 16 || key !== expected) throw new Error('Akses admin ditolak.');
+function uploadFileToDrive(idToken, filePayload) {
+  const admin = assertAdmin_(idToken);
+  if (!filePayload || !filePayload.base64) throw new Error('Data file tidak valid.');
+  const data = readData_();
+  const folderId = (filePayload.folderId) || (data.settings && data.settings.driveFolderId) || DEFAULT_DRIVE_FOLDER_ID;
+  const folder = DriveApp.getFolderById(folderId);
+  const fileName = filePayload.name || ('bg_' + Date.now() + '.png');
+  const contentType = filePayload.mimeType || 'image/png';
+  const decoded = Utilities.base64Decode(filePayload.base64);
+  const blob = Utilities.newBlob(decoded, contentType, fileName);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const url = 'https://lh3.googleusercontent.com/d/' + file.getId();
+  if (filePayload.targetField === 'bgUrl') {
+    data.profile = data.profile || {};
+    data.profile.bgUrl = url;
+    scriptProperties_().setProperty('APP_DATA', JSON.stringify(data));
+  }
+  return { success: true, fileId: file.getId(), url: url };
+}
+
+function assertAdmin_(idToken) {
+  const identity = verifyGoogleIdToken_(idToken);
+  if (identity.email !== superAdminEmail_()) throw new Error('Akses admin ditolak.');
+  return identity;
+}
+
+function verifyGoogleIdToken_(idToken) {
+  if (typeof idToken !== 'string' || idToken.length > 5000) throw new Error('Login Google diperlukan.');
+  const clientId = scriptProperties_().getProperty('GOOGLE_CLIENT_ID');
+  if (!clientId) throw new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.');
+  const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), { muteHttpExceptions: true });
+  if (response.getResponseCode() !== 200) throw new Error('Login Google tidak valid.');
+  const payload = JSON.parse(response.getContentText());
+  if (payload.aud !== clientId || String(payload.email_verified) !== 'true' || Number(payload.exp) * 1000 <= Date.now()) throw new Error('Identitas Google tidak valid.');
+  return { email: String(payload.email || '').toLowerCase() };
+}
+
+function scriptProperties_() {
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('SUPER_ADMIN_EMAIL')) props.setProperty('SUPER_ADMIN_EMAIL', DEFAULT_SUPER_ADMIN_EMAIL);
+  return props;
+}
+
+function superAdminEmail_() {
+  return String(scriptProperties_().getProperty('SUPER_ADMIN_EMAIL') || DEFAULT_SUPER_ADMIN_EMAIL).toLowerCase();
 }
 
 function validateData_(input) {
@@ -75,22 +142,33 @@ function validateData_(input) {
   clean.profile = {
     title: text_(input.profile && input.profile.title, 100),
     bio: text_(input.profile && input.profile.bio, 500),
-    avatarUrl: url_(input.profile && input.profile.avatarUrl)
+    avatarUrl: url_(input.profile && input.profile.avatarUrl),
+    bgUrl: url_(input.profile && input.profile.bgUrl)
   };
   clean.news = array_(input.news, 50).map(function (x) { return { id: id_(x.id), title: text_(x.title, 150), body: html_(x.body, 5000), imageUrl: url_(x.imageUrl), active: x.active === true }; });
   clean.links = array_(input.links, 100).map(function (x) { return { id: id_(x.id), label: text_(x.label, 100), url: url_(x.url, true), icon: text_(x.icon, 8), active: x.active === true }; });
   const s = input.settings || {};
-  clean.settings = { driveFolderId: id_(s.driveFolderId, true), spreadsheetId: id_(s.spreadsheetId, true), themeDays: Math.min(365, Math.max(1, Number(s.themeDays) || 3)), themes: array_(s.themes, 20).map(function (x) { return text_(x, 30).toLowerCase(); }).filter(Boolean) };
+  clean.settings = { driveFolderId: id_(s.driveFolderId || DEFAULT_DRIVE_FOLDER_ID, true), spreadsheetId: id_(s.spreadsheetId, true), themeDays: Math.min(365, Math.max(1, Number(s.themeDays) || 3)), themes: array_(s.themes, 20).map(function (x) { return text_(x, 30).toLowerCase(); }).filter(Boolean) };
   return clean;
 }
 
 function readData_() {
-  const raw = PropertiesService.getScriptProperties().getProperty('APP_DATA');
+  const raw = scriptProperties_().getProperty('APP_DATA');
   return raw ? JSON.parse(raw) : defaultData_();
 }
 
 function defaultData_() {
-  return { profile: { title: 'Fanul Game Portal', bio: 'Pilih dunia, mulai petualangan.', avatarUrl: '' }, news: [{ id: 'welcome', title: 'Selamat datang', body: 'Portal game resmi sudah aktif!', imageUrl: '', active: true }], links: [{ id: 'community', label: 'Komunitas Game', url: 'https://github.com/fanul', icon: '🎮', active: true }], settings: { driveFolderId: '', spreadsheetId: '', themeDays: 3, themes: ['neon', 'fantasy', 'space'] } };
+  return {
+    profile: {
+      title: 'MEKAVERSE PORTAL',
+      bio: 'Digital artifacts gallery & gaming gateway.',
+      avatarUrl: '',
+      bgUrl: ''
+    },
+    news: [{ id: 'welcome', title: 'SYSTEM ONLINE', body: 'Welcome to MekaVerse game portal.', imageUrl: '', active: true }],
+    links: [{ id: 'community', label: 'Discord Community', url: 'https://github.com/fanul', icon: '❖', active: true }],
+    settings: { driveFolderId: DEFAULT_DRIVE_FOLDER_ID, spreadsheetId: '', themeDays: 3, themes: ['void', 'neon'] }
+  };
 }
 
 function theme_(name) {
@@ -104,11 +182,11 @@ function newsXml_(news) {
   return XmlService.getPrettyFormat().format(doc);
 }
 
-function appendAudit_(spreadsheetId, action) {
+function appendAudit_(spreadsheetId, action, email) {
   const book = SpreadsheetApp.openById(spreadsheetId);
   const sheet = book.getSheetByName('audit_log') || book.insertSheet('audit_log');
   if (sheet.getLastRow() === 0) sheet.appendRow(['timestamp', 'admin', 'action']);
-  sheet.appendRow([new Date().toISOString(), ADMIN_EMAIL, action]);
+  sheet.appendRow([new Date().toISOString(), email, action]);
 }
 
 function rateLimit_() {
