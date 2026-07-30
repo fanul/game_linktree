@@ -11,7 +11,11 @@ function loadGas(source = gas) {
   const outputs = []
   const sandbox = {
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput(text) { const out = { text, setMimeType() { return out } }; outputs.push(out); return out } },
-    HtmlService: { createHtmlOutputFromFile() { return { getContent: () => '<!doctype html><div id="app"></div>', setTitle() { return this } } } },
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutputFromFile(filename) { return { getContent: () => filename === 'index' ? '<!doctype html><div id="app"></div>' : 'content-' + filename, setTitle() { return this }, setXFrameOptionsMode() { return this } } },
+      createTemplateFromFile(filename) { return { evaluate: () => ({ getContent: () => '<!doctype html><div id="app"></div>', setTitle() { return this }, setXFrameOptionsMode() { return this } }) } }
+    },
     Utilities: { getUuid: () => 'uuid' },
     PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty() {} }) },
     Session: { getActiveUser: () => ({ getEmail: () => 'fanul.doang@gmail.com' }) },

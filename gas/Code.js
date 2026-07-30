@@ -12,13 +12,20 @@ const FULL_PROXY_RPC_HANDLERS = {
   uploadFileToDrive: uploadFileToDrive
 };
 
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
 function doGet(e) {
-  if (e && e.parameter && e.parameter.__full_proxy_html === '1') {
-    return jsonResponse_({ ok: true, html: HtmlService.createHtmlOutputFromFile('index').getContent() });
-  }
-  return HtmlService.createHtmlOutputFromFile('index')
+  const template = HtmlService.createTemplateFromFile('index');
+  const htmlOutput = template.evaluate()
     .setTitle('Pale Meka Future Portal')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+  if (e && e.parameter && e.parameter.__full_proxy_html === '1') {
+    return jsonResponse_({ ok: true, html: htmlOutput.getContent() });
+  }
+  return htmlOutput;
 }
 
 function doPost(e) {
